@@ -11,8 +11,16 @@ venv/
 api.log
 api.pid
 tmp_uploads/
-baseline/evidence/
+baseline/
+models/
+experiments/__pycache__/
 
-# Large Models (if not using Git LFS)
-# yolov8n.pt   # Un-comment this if you don't want the 6MB weight in the repo
+# Ignore experimental data
+*.csv
+*.jpg
+!violation_rules_verified.csv
+!docs/*.jpg
+
+# Weights (tracked via LFS or downloaded on build, but keep yolov8n.pt here for hackathon)
+# *.pt
 # *.gguf
