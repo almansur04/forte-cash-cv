@@ -565,376 +565,293 @@ async def ui():
     <div id="toastContainer" class="fixed bottom-6 right-6 flex flex-col gap-3 z-50"></div>
 
     <script>
-        const API_KEY = "forte-hack-2026";
-        try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch(e){}
+            const API_KEY = "forte-hack-2026";
 
-        function switchView(viewName, element) {
-            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-            document.getElementById('view-' + viewName).classList.remove('hidden');
-            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
-            const titles = {
-                dashboard: 'Operational Dashboard',
-                investigations: 'Investigation Logs',
-                regulatory: 'Regulatory Base',
-                settings: 'System Settings', report: 'Investigation Report'
-            };
-            document.getElementById('pageTitle').innerText = titles[viewName];
-            if (viewName === 'investigations') renderInvestigationsTable();
-            if (viewName === 'regulatory') renderComplianceLog();
-            if (viewName === 'settings') updateHealth();
-        }
-
-        function showToast(msg, type = "error") {
-            const toast = document.createElement('div');
-            const bg = type === "error"
-                ? "bg-forte-magenta/10 border-forte-magenta/50 text-forte-magenta"
-                : "bg-forte-green/10 border-forte-green/50 text-forte-green";
-            toast.className = `toast glass border ${bg} px-4 py-3 rounded-lg shadow-xl flex items-center gap-3`;
-            toast.innerHTML = `<i data-lucide="${type === 'error' ? 'alert-circle' : 'check-circle'}" class="w-5 h-5"></i> <span class="text-sm font-medium">${msg}</span>`;
-            document.getElementById('toastContainer').appendChild(toast);
-            try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch(e){}
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
-        }
-
-        let globalJobs = [];
-
-        async function updateHealth() {
-            const statusEl = document.getElementById('sysStatus');
-            console.log('[health] fetching...');
-            try {
-                const controller = new AbortController();
-                const tid = setTimeout(() => controller.abort(), 20000);
-                const res = await fetch('/api/v1/health', { signal: controller.signal, cache: 'no-store' });
-                clearTimeout(tid);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data = await res.json();
-                if (!data.device) throw new Error('no device field in response');
-                statusEl.innerText = `System Online (${data.device.toUpperCase()})`;
-                document.getElementById('statDevice').innerText = data.device.toUpperCase();
-                document.getElementById('settingsDevice').value = data.device.toUpperCase();
-            } catch (e) {
-                statusEl.innerText = 'Waking up server...';
-                console.warn('[health]', e.name === 'AbortError' ? 'timeout' : (e.message || e));
+            // ===== HELPERS =====
+            function safeIcons() {
+                try { if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons(); }
+                catch (e) { console.warn('[lucide] skipped:', e.message); }
             }
-        }
 
-        async function fetchHistory() {
-            try {
-                const res = await fetch('/api/v1/history', { headers: { "X-API-Key": API_KEY } });
-                globalJobs = await res.json();
-
-                const list = document.getElementById('historyList');
-                if (globalJobs.length === 0) return;
-
-                list.innerHTML = "";
-                let violations = 0;
-                let cleared = 0;
-
-                globalJobs.slice(0, 5).forEach(j => {
-                    if (j.status === 'done') {
-                        if (j.result.verdict === 'нарушение') violations++;
-                        else cleared++;
-                    }
-                    const icon = j.status === 'processing' ? 'loader-2' : (j.result?.verdict === 'нарушение' ? 'alert-triangle' : 'check-circle');
-                    const color = j.status === 'processing' ? 'text-forte-blue animate-spin' : (j.result?.verdict === 'нарушение' ? 'text-forte-magenta' : 'text-forte-green');
-
-                    const clickableAttrs = j.status === 'done'
-                        ? `onclick="openReport('${j.job_id}')" class="w-full text-left flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-forte-magenta/50 transition-colors cursor-pointer"`
-                        : `class="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50"`;
-                    list.innerHTML += `
-                        <button ${clickableAttrs}>
-                            <div class="flex items-center gap-3 overflow-hidden">
-                                <i data-lucide="${icon}" class="w-4 h-4 ${color} shrink-0"></i>
-                                <div class="truncate">
-                                    <p class="text-xs font-medium text-slate-200 truncate">${j.video_name}</p>
-                                    <p class="text-[10px] text-slate-500">${new Date(j.timestamp*1000).toLocaleTimeString()}</p>
-                                </div>
-                            </div>
-                            ${j.status === 'done' ? '<i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 shrink-0"></i>' : ''}
-                        </button>
-                    `;
-                });
-                document.getElementById('statTotal').innerText = globalJobs.length;
-                document.getElementById('statViolations').innerText = violations;
-                document.getElementById('statCleared').innerText = cleared;
-                try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch(e){}
-            } catch (e) {}
-        }
-
-        function renderInvestigationsTable() {
-            const tbody = document.getElementById('investigationsTableBody');
-            tbody.innerHTML = "";
-            globalJobs.forEach(j => {
-                const verdict = j.status === 'processing' ? 'Processing...' : (j.result?.verdict === 'нарушение' ? '<span class="text-forte-magenta font-bold">Violation</span>' : '<span class="text-forte-green font-bold">Clean</span>');
-                const count = j.status === 'done' && j.result.violations ? j.result.violations.length : 0;
-                tbody.innerHTML += `
-                    <tr class="border-b border-slate-700/50 hover:bg-slate-800/30">
-                        <td class="px-6 py-4 font-medium text-slate-200">${j.video_name}</td>
-                        <td class="px-6 py-4">${new Date(j.timestamp*1000).toLocaleString()}</td>
-                        <td class="px-6 py-4">${verdict}</td>
-                        <td class="px-6 py-4">${count}</td>
-                        <td class="px-6 py-4">
-                            ${j.status === 'done' ? `<button onclick="openReport('${j.job_id}')" class="px-3 py-1 bg-forte-magenta/20 text-forte-magenta rounded hover:bg-forte-magenta/30 text-xs font-bold cursor-pointer">View</button>` : '<span class="text-slate-600 text-xs">—</span>'}
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        function handleFileSelect(input) {
-            if (input.files.length > 0) uploadVideo(input.files[0]);
-        }
-
-        const dropZone = document.getElementById('uploadSection');
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-forte-magenta'); });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-forte-magenta'));
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-forte-magenta');
-            if (e.dataTransfer.files.length) uploadVideo(e.dataTransfer.files[0]);
-        });
-
-        async function uploadVideo(file) {
-            document.getElementById('uploadSection').classList.add('hidden');
-            document.getElementById('resultSection').classList.add('hidden');
-            document.getElementById('processingSection').classList.remove('hidden');
-            document.getElementById('processingSection').classList.add('flex');
-
-            let progress = 0;
-            const bar = document.getElementById('progressBar');
-            const text = document.getElementById('progressText');
-
-            const phases = [
-                { p: 20, t: "Uploading video..." },
-                { p: 40, t: "Extracting frames via FFmpeg..." },
-                { p: 70, t: "Running YOLOv8 inference..." },
-                { p: 90, t: "Applying NBRK compliance rules..." },
-                { p: 100, t: "Generating evidence package..." }
-            ];
-            let phaseIdx = 0;
-            const phaseInt = setInterval(() => {
-                if (phaseIdx < phases.length) {
-                    bar.style.width = phases[phaseIdx].p + "%";
-                    text.innerText = phases[phaseIdx].t;
-                    phaseIdx++;
+            function setStatus(text, color) {
+                const el = document.getElementById('sysStatus');
+                if (el) el.innerText = text;
+                const dot = el ? el.previousElementSibling : null;
+                if (dot) {
+                    const cls = color === 'red' ? 'bg-red-500' : (color === 'yellow' ? 'bg-amber-400' : 'bg-emerald-500');
+                    dot.innerHTML = '<span class="relative inline-flex rounded-full h-2 w-2 ' + cls + '"></span>';
                 }
-            }, 1500);
-
-            const formData = new FormData();
-            formData.append("file", file);
-
-            try {
-                const res = await fetch("/api/v1/analyze", {
-                    method: "POST",
-                    headers: { "X-API-Key": API_KEY },
-                    body: formData
-                });
-                const data = await res.json();
-                if (res.ok) pollStatus(data.job_id, phaseInt, bar, text);
-                else throw new Error(data.detail || data.error?.message || "Unknown error");
-            } catch (e) {
-                clearInterval(phaseInt);
-                showToast(e.message, 'error');
-                resetUI();
             }
-        }
 
-        async function pollStatus(jobId, phaseInt, bar, text) {
-            const interval = setInterval(async () => {
-                const res = await fetch(`/api/v1/jobs/${jobId}`, { headers: { "X-API-Key": API_KEY } });
-                const data = await res.json();
+            // ===== HEALTH =====
+            async function updateHealth() {
+                try {
+                    const controller = new AbortController();
+                    const tid = setTimeout(() => controller.abort(), 25000);
+                    const res = await fetch('/api/v1/health', { signal: controller.signal, cache: 'no-store' });
+                    clearTimeout(tid);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    if (!data.device) throw new Error('no device field');
+                    setStatus('System Online (' + data.device.toUpperCase() + ')', 'green');
+                    const s = document.getElementById('statDevice'); if (s) s.innerText = data.device.toUpperCase();
+                    const sd = document.getElementById('settingsDevice'); if (sd) sd.value = data.device.toUpperCase();
+                } catch (e) {
+                    setStatus('Waking server...', 'yellow');
+                    console.warn('[health] ' + (e.name === 'AbortError' ? 'timeout' : e.message));
+                }
+            }
 
-                if (data.status === "done") {
-                    clearInterval(interval);
-                    clearInterval(phaseInt);
-                    bar.style.width = "100%";
-                    text.innerText = "Analysis Complete";
-                    setTimeout(() => renderResult(data.result), 400);
-                } else if (data.status === "failed") {
-                    clearInterval(interval);
-                    clearInterval(phaseInt);
-                    showToast("Analysis failed: " + data.error, 'error');
+            // ===== HISTORY =====
+            let globalJobs = [];
+            async function fetchHistory() {
+                try {
+                    const res = await fetch('/api/v1/history', { headers: { "X-API-Key": API_KEY } });
+                    if (!res.ok) return;
+                    globalJobs = await res.json();
+                    const list = document.getElementById('historyList');
+                    if (!list) return;
+                    if (globalJobs.length === 0) { list.innerHTML = '<p class="text-xs text-slate-500 italic">No recent jobs.</p>'; return; }
+                    let v = 0, c = 0;
+                    list.innerHTML = '';
+                    globalJobs.slice(0, 5).forEach(function(j) {
+                        if (j.status === 'done') {
+                            if (j.result && j.result.verdict === 'нарушение') v++; else c++;
+                        }
+                        const isV = j.result && j.result.verdict === 'нарушение';
+                        const icon = j.status === 'processing' ? 'loader-2' : (isV ? 'alert-triangle' : 'check-circle');
+                        const color = j.status === 'processing' ? 'text-forte-blue animate-spin' : (isV ? 'text-forte-magenta' : 'text-forte-green');
+                        const clickable = j.status === 'done'
+                            ? `onclick="openReport('${j.job_id}')" class="w-full text-left flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-forte-magenta/50 transition-colors cursor-pointer"`
+                            : 'class="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50"';
+                        list.innerHTML += '<button ' + clickable + '>'
+                            + '<div class="flex items-center gap-3 overflow-hidden">'
+                            + '<i data-lucide="' + icon + '" class="w-4 h-4 ' + color + ' shrink-0"></i>'
+                            + '<div class="truncate">'
+                            + '<p class="text-xs font-medium text-slate-200 truncate">' + (j.video_name || 'unknown') + '</p>'
+                            + '<p class="text-[10px] text-slate-500">' + new Date(j.timestamp * 1000).toLocaleTimeString() + '</p>'
+                            + '</div></div>'
+                            + (j.status === 'done' ? '<i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 shrink-0"></i>' : '')
+                            + '</button>';
+                    });
+                    const st = document.getElementById('statTotal'); if (st) st.innerText = globalJobs.length;
+                    const sv = document.getElementById('statViolations'); if (sv) sv.innerText = v;
+                    const sc = document.getElementById('statCleared'); if (sc) sc.innerText = c;
+                    safeIcons();
+                } catch (e) {
+                    console.warn('[history]', e.message);
+                }
+            }
+
+            // ===== VIEWS =====
+            function switchView(viewName, element) {
+                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+                const target = document.getElementById('view-' + viewName);
+                if (target) target.classList.remove('hidden');
+                document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+                if (element) element.classList.add('active');
+                const titles = { dashboard: 'Operational Dashboard', investigations: 'Investigation Logs', regulatory: 'Regulatory Base', settings: 'System Settings', report: 'Investigation Report' };
+                const pt = document.getElementById('pageTitle'); if (pt) pt.innerText = titles[viewName] || 'Dashboard';
+                if (viewName === 'investigations') renderInvestigationsTable();
+                if (viewName === 'regulatory') renderComplianceLog();
+                if (viewName === 'settings') updateHealth();
+            }
+
+            function renderInvestigationsTable() {
+                const tbody = document.getElementById('investigationsTableBody');
+                if (!tbody) return;
+                tbody.innerHTML = '';
+                if (!globalJobs.length) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-slate-500 italic">No investigations yet.</td></tr>'; return; }
+                globalJobs.forEach(function(j) {
+                    const isV = j.result && j.result.verdict === 'нарушение';
+                    const verdict = j.status === 'processing' ? 'Processing...' : (isV ? '<span class="text-forte-magenta font-bold">Violation</span>' : '<span class="text-forte-green font-bold">Clean</span>');
+                    const count = j.status === 'done' && j.result && j.result.violations ? j.result.violations.length : 0;
+                    tbody.innerHTML += '<tr class="border-b border-slate-700/50 hover:bg-slate-800/30">'
+                        + '<td class="px-6 py-4 font-medium text-slate-200">' + (j.video_name || '—') + '</td>'
+                        + '<td class="px-6 py-4 text-slate-400">' + new Date(j.timestamp * 1000).toLocaleString() + '</td>'
+                        + '<td class="px-6 py-4">' + verdict + '</td>'
+                        + '<td class="px-6 py-4">' + count + '</td>'
+                        + '<td class="px-6 py-4">'
+                        + (j.status === 'done' ? `<button onclick="openReport('${j.job_id}')" class="px-3 py-1 bg-forte-magenta/20 text-forte-magenta rounded hover:bg-forte-magenta/30 text-xs font-bold cursor-pointer">View</button>` : '—')
+                        + '</td></tr>';
+                });
+            }
+
+            function renderComplianceLog() {
+                const jobsWithV = globalJobs.filter(function(j) { return j.status === 'done' && j.result && j.result.verdict === 'нарушение'; });
+                const total = jobsWithV.reduce(function(s, j) { return s + ((j.result.violations || []).length); }, 0);
+                const summary = document.getElementById('regulatorySummary');
+                if (summary) summary.innerHTML = '<span class="text-forte-magenta font-bold">' + total + '</span> confirmed Article 22 violation(s) across <span class="text-white font-bold">' + jobsWithV.length + '</span> investigation(s).';
+                const tbody = document.getElementById('regulatoryBody');
+                if (!tbody) return;
+                tbody.innerHTML = '';
+                if (!jobsWithV.length) { tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-500 italic">No violations recorded yet.</td></tr>'; return; }
+                jobsWithV.forEach(function(j) {
+                    (j.result.violations || []).forEach(function(v) {
+                        tbody.innerHTML += '<tr class="border-b border-slate-700/50 hover:bg-slate-800/30">'
+                            + '<td class="px-4 py-3 text-slate-400 text-xs">' + new Date(j.timestamp * 1000).toLocaleString() + '</td>'
+                            + '<td class="px-4 py-3 text-slate-200">' + j.video_name + '</td>'
+                            + '<td class="px-4 py-3 font-mono text-forte-magenta">' + v.timecode_sec + 's-' + v.timecode_end_sec + 's</td>'
+                            + '<td class="px-4 py-3 text-slate-300">' + (v.timecode_end_sec - v.timecode_sec).toFixed(1) + 's</td>'
+                            + '<td class="px-4 py-3"><button onclick="openReport(\'' + j.job_id + '\')" class="px-3 py-1 bg-forte-magenta/20 text-forte-magenta rounded hover:bg-forte-magenta/30 text-xs font-bold cursor-pointer">View</button></td>'
+                            + '</tr>';
+                    });
+                });
+            }
+
+            async function openReport(jobId) {
+                document.querySelectorAll('.view-section').forEach(function(el) { el.classList.add('hidden'); });
+                const v = document.getElementById('view-report');
+                if (v) v.classList.remove('hidden');
+                const pt = document.getElementById('pageTitle'); if (pt) pt.innerText = 'Investigation Report';
+                document.querySelectorAll('.sidebar-item').forEach(function(el) { el.classList.remove('active'); });
+                const c = document.getElementById('reportContent');
+                if (!c) return;
+                c.innerHTML = '<div class="glass rounded-2xl p-8 text-center text-slate-400">Loading report...</div>';
+                try {
+                    const res = await fetch('/api/v1/jobs/' + jobId, { headers: { "X-API-Key": API_KEY } });
+                    const job = await res.json();
+                    if (job.status !== 'done' || !job.result) {
+                        c.innerHTML = '<div class="glass rounded-2xl p-6 text-slate-400">Job status: ' + job.status + '. No report yet.</div>';
+                        return;
+                    }
+                    c.innerHTML = '<a onclick="switchView(\'dashboard\', document.querySelector(\'[onclick*=dashboard]\'))" class="self-start flex items-center gap-2 text-slate-400 hover:text-white mb-2 cursor-pointer"><i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Dashboard</a>' + buildResultHTML(job.result);
+                    safeIcons();
+                } catch (e) {
+                    c.innerHTML = '<div class="glass rounded-2xl p-6 text-red-400">Failed: ' + e.message + '</div>';
+                }
+            }
+
+            function buildResultHTML(res) {
+                const isV = res.verdict === "нарушение";
+                const bc = isV ? "border-forte-magenta" : "border-forte-green";
+                const bg = isV ? "bg-forte-magenta/5" : "bg-forte-green/5";
+                const ib = isV ? "bg-forte-magenta/20 text-forte-magenta" : "bg-forte-green/20 text-forte-green";
+                const ic = isV ? "alert-triangle" : "check-circle";
+                let html = '<div class="glass rounded-2xl p-6 flex items-center justify-between shadow-lg border-l-4 ' + bc + ' ' + bg + '">'
+                    + '<div class="flex items-center gap-4">'
+                    + '<div class="p-3 rounded-full ' + ib + '"><i data-lucide="' + ic + '" class="w-8 h-8"></i></div>'
+                    + '<div><h2 class="text-2xl font-bold ' + (isV ? 'text-forte-magenta' : 'text-forte-green') + '">' + (isV ? 'Violation Detected' : 'No Violations') + '</h2>'
+                    + '<p class="text-slate-400 text-sm mt-1">' + (res.video || '') + '</p></div></div></div>'
+                    + '<div class="flex flex-col gap-6">';
+                (res.violations || []).forEach(function(v) {
+                    html += '<div class="glass rounded-2xl p-6 flex flex-col md:flex-row gap-6 border border-slate-700/50">'
+                        + '<div class="w-full md:w-1/2 flex flex-col gap-4">'
+                        + '<div><span class="px-2 py-1 bg-slate-800 text-[10px] uppercase font-bold tracking-wider rounded text-slate-400 border border-slate-700">' + v.type + '</span>'
+                        + '<h3 class="text-lg font-semibold text-white mt-3">' + v.description + '</h3></div>'
+                        + '<div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">'
+                        + '<p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-bold">Regulatory Citation</p>'
+                        + '<a href="' + (v.adilet_url || '#') + '" target="_blank" class="text-sm text-forte-blue hover:underline flex items-center gap-1 font-medium">'
+                        + 'NBRK No. 231, ' + (v.article_number || '') + ' <i data-lucide="external-link" class="w-3 h-3"></i></a></div>'
+                        + '<div class="grid grid-cols-2 gap-4">'
+                        + '<div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700"><p class="text-[10px] text-slate-500 uppercase font-bold">Start</p><p class="text-white font-mono text-lg">' + v.timecode_sec + 's</p></div>'
+                        + '<div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700"><p class="text-[10px] text-slate-500 uppercase font-bold">End</p><p class="text-white font-mono text-lg">' + v.timecode_end_sec + 's</p></div>'
+                        + '</div></div>'
+                        + '<div class="w-full md:w-1/2 flex flex-col gap-4">'
+                        + '<div class="rounded-xl overflow-hidden border border-slate-700 bg-black aspect-video relative">'
+                        + '<video controls class="w-full h-full object-contain" src="' + (v.video_url || '') + '#t=' + v.timecode_sec + ',' + v.timecode_end_sec + '"></video></div>'
+                        + (v.evidence_frames || []).map(function(img) { return '<img src="' + img + '" class="w-full rounded-xl border border-slate-700 shadow-lg">'; }).join('')
+                        + '</div></div>';
+                });
+                return html + '</div>';
+            }
+
+            // ===== UPLOAD =====
+            let pendingPhaseInt = null;
+            function handleFileSelect(input) { if (input.files.length > 0) uploadVideo(input.files[0]); }
+
+            async function uploadVideo(file) {
+                document.getElementById('uploadSection').classList.add('hidden');
+                document.getElementById('resultSection').classList.add('hidden');
+                const ps = document.getElementById('processingSection');
+                ps.classList.remove('hidden'); ps.classList.add('flex');
+                const bar = document.getElementById('progressBar');
+                const text = document.getElementById('progressText');
+                bar.style.width = '0%';
+                const phases = [
+                    { p: 20, t: 'Uploading video...' },
+                    { p: 40, t: 'Extracting frames via FFmpeg...' },
+                    { p: 70, t: 'Running ONNX inference...' },
+                    { p: 90, t: 'Applying NBRK compliance rules...' },
+                    { p: 100, t: 'Generating evidence package...' }
+                ];
+                let i = 0;
+                pendingPhaseInt = setInterval(function() {
+                    if (i < phases.length) { bar.style.width = phases[i].p + '%'; text.innerText = phases[i].t; i++; }
+                }, 1500);
+
+                const fd = new FormData();
+                fd.append('file', file);
+
+                try {
+                    const res = await fetch('/api/v1/analyze', { method: 'POST', headers: { 'X-API-Key': API_KEY }, body: fd });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || (data.error && data.error.message) || 'Upload failed');
+                    pollStatus(data.job_id, bar, text);
+                } catch (e) {
+                    clearInterval(pendingPhaseInt); pendingPhaseInt = null;
+                    alert('Error: ' + e.message);
                     resetUI();
                 }
-            }, 1000);
-        }
-
-        function resetUI() {
-            document.getElementById('uploadSection').classList.remove('hidden');
-            document.getElementById('processingSection').classList.add('hidden');
-            document.getElementById('processingSection').classList.remove('flex');
-            document.getElementById('resultSection').classList.add('hidden');
-            document.getElementById('resultSection').classList.remove('flex');
-            document.getElementById('fileInput').value = "";
-            document.getElementById('progressBar').style.width = "0%";
-        }
-
-        function renderResult(res) {
-            document.getElementById('processingSection').classList.add('hidden');
-            document.getElementById('processingSection').classList.remove('flex');
-            document.getElementById('resultSection').classList.remove('hidden');
-            document.getElementById('resultSection').classList.add('flex');
-
-            const isViolation = res.verdict === "нарушение";
-            const borderCol = isViolation ? "border-forte-magenta" : "border-forte-green";
-            const bgCol = isViolation ? "bg-forte-magenta/5" : "bg-forte-green/5";
-            const iconBg = isViolation ? "bg-forte-magenta/20 text-forte-magenta" : "bg-forte-green/20 text-forte-green";
-            const iconName = isViolation ? "alert-triangle" : "check-circle";
-
-            let html = `
-                <div class="glass rounded-2xl p-6 flex items-center justify-between shadow-lg border-l-4 ${borderCol} ${bgCol}">
-                    <div class="flex items-center gap-4">
-                        <div class="p-3 rounded-full ${iconBg}">
-                            <i data-lucide="${iconName}" class="w-8 h-8"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-2xl font-bold ${isViolation ? 'text-forte-magenta' : 'text-forte-green'}">${isViolation ? 'Violation Detected' : 'No Violations'}</h2>
-                            <p class="text-slate-400 text-sm mt-1">${res.video}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex flex-col gap-6">
-            `;
-
-            res.violations.forEach(v => {
-                html += `
-                    <div class="glass rounded-2xl p-6 flex flex-col md:flex-row gap-6 border border-slate-700/50">
-                        <div class="w-full md:w-1/2 flex flex-col gap-4">
-                            <div>
-                                <span class="px-2 py-1 bg-slate-800 text-[10px] uppercase font-bold tracking-wider rounded text-slate-400 border border-slate-700">${v.type}</span>
-                                <h3 class="text-lg font-semibold text-white mt-3">${v.description}</h3>
-                            </div>
-                            <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
-                                <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-bold">Regulatory Citation</p>
-                                <a href="${v.adilet_url}" target="_blank" class="text-sm text-forte-blue hover:underline flex items-center gap-1 font-medium">
-                                    NBRK Resolution No. 231, ${v.article_number} <i data-lucide="external-link" class="w-3 h-3"></i>
-                                </a>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
-                                    <p class="text-[10px] text-slate-500 uppercase font-bold">Start Time</p>
-                                    <p class="text-white font-mono text-lg">${v.timecode_sec}s</p>
-                                </div>
-                                <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
-                                    <p class="text-[10px] text-slate-500 uppercase font-bold">End Time</p>
-                                    <p class="text-white font-mono text-lg">${v.timecode_end_sec}s</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="w-full md:w-1/2 flex flex-col gap-4">
-                            <div class="rounded-xl overflow-hidden border border-slate-700 bg-black aspect-video relative">
-                                <video controls class="w-full h-full object-contain" src="${v.video_url}#t=${v.timecode_sec},${v.timecode_end_sec}"></video>
-                            </div>
-                            ${v.evidence_frames.map(img => `<img src="${img}" class="w-full rounded-xl border border-slate-700 shadow-lg">`).join('')}
-                        </div>
-                    </div>
-                `;
-            });
-
-            html += `</div>`;
-            html += `
-                <div class="flex justify-center mt-6">
-                    <button onclick="resetUI()" class="px-6 py-3 bg-forte-magenta hover:bg-forte-magenta/90 text-white font-semibold rounded-lg shadow-lg transition-all flex items-center gap-2 cursor-pointer">
-                        <i data-lucide="upload" class="w-5 h-5"></i>
-                        Analyze Another Video
-                    </button>
-                </div>
-            `;
-            document.getElementById('resultSection').innerHTML = html;
-            try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch(e){}
-            fetchHistory();
-        }
-
-        // ===== REPORT DETAIL + COMPLIANCE LOG =====
-        function buildResultHTML(res) {
-            const isViolation = res.verdict === "нарушение";
-            const borderCol = isViolation ? "border-forte-magenta" : "border-forte-green";
-            const bgCol = isViolation ? "bg-forte-magenta/5" : "bg-forte-green/5";
-            const iconBg = isViolation ? "bg-forte-magenta/20 text-forte-magenta" : "bg-forte-green/20 text-forte-green";
-            const iconName = isViolation ? "alert-triangle" : "check-circle";
-            let html = '<div class="glass rounded-2xl p-6 flex items-center justify-between shadow-lg border-l-4 ' + borderCol + ' ' + bgCol + '">'
-                + '<div class="flex items-center gap-4">'
-                + '<div class="p-3 rounded-full ' + iconBg + '"><i data-lucide="' + iconName + '" class="w-8 h-8"></i></div>'
-                + '<div><h2 class="text-2xl font-bold ' + (isViolation ? 'text-forte-magenta' : 'text-forte-green') + '">'
-                + (isViolation ? 'Violation Detected' : 'No Violations') + '</h2>'
-                + '<p class="text-slate-400 text-sm mt-1">' + res.video + '</p></div></div></div>'
-                + '<div class="flex flex-col gap-6">';
-            (res.violations || []).forEach(function(v) {
-                html += '<div class="glass rounded-2xl p-6 flex flex-col md:flex-row gap-6 border border-slate-700/50">'
-                    + '<div class="w-full md:w-1/2 flex flex-col gap-4">'
-                    + '<div><span class="px-2 py-1 bg-slate-800 text-[10px] uppercase font-bold tracking-wider rounded text-slate-400 border border-slate-700">' + v.type + '</span>'
-                    + '<h3 class="text-lg font-semibold text-white mt-3">' + v.description + '</h3></div>'
-                    + '<div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">'
-                    + '<p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-bold">Regulatory Citation</p>'
-                    + '<a href="' + v.adilet_url + '" target="_blank" class="text-sm text-forte-blue hover:underline flex items-center gap-1 font-medium">'
-                    + 'NBRK Resolution No. 231, ' + v.article_number + ' <i data-lucide="external-link" class="w-3 h-3"></i></a></div>'
-                    + '<div class="grid grid-cols-2 gap-4">'
-                    + '<div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700"><p class="text-[10px] text-slate-500 uppercase font-bold">Start Time</p>'
-                    + '<p class="text-white font-mono text-lg">' + v.timecode_sec + 's</p></div>'
-                    + '<div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700"><p class="text-[10px] text-slate-500 uppercase font-bold">End Time</p>'
-                    + '<p class="text-white font-mono text-lg">' + v.timecode_end_sec + 's</p></div></div></div>'
-                    + '<div class="w-full md:w-1/2 flex flex-col gap-4">'
-                    + '<div class="rounded-xl overflow-hidden border border-slate-700 bg-black aspect-video relative">'
-                    + '<video controls class="w-full h-full object-contain" src="' + v.video_url + '#t=' + v.timecode_sec + ',' + v.timecode_end_sec + '"></video></div>'
-                    + (v.evidence_frames || []).map(function(img) { return '<img src="' + img + '" class="w-full rounded-xl border border-slate-700 shadow-lg">'; }).join('')
-                    + '</div></div>';
-            });
-            html += '</div>';
-            return html;
-        }
-
-        async function openReport(jobId) {
-            document.querySelectorAll('.view-section').forEach(function(el) { el.classList.add('hidden'); });
-            document.getElementById('view-report').classList.remove('hidden');
-            document.getElementById('pageTitle').innerText = 'Investigation Report';
-            document.querySelectorAll('.sidebar-item').forEach(function(el) { el.classList.remove('active'); });
-            const container = document.getElementById('reportContent');
-            container.innerHTML = '<div class="glass rounded-2xl p-8 text-center text-slate-400">Loading report...</div>';
-            try {
-                const res = await fetch('/api/v1/jobs/' + jobId, {headers: {"X-API-Key": API_KEY}});
-                const job = await res.json();
-                if (job.status !== 'done' || !job.result) {
-                    container.innerHTML = '<div class="glass rounded-2xl p-6 text-slate-400">Job status: ' + job.status + '. No report available yet.</div>';
-                    return;
-                }
-                container.innerHTML = '<a onclick="switchView(\'dashboard\', document.querySelector(\'[onclick*=dashboard]\'))" class="self-start flex items-center gap-2 text-slate-400 hover:text-white mb-2 cursor-pointer"><i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Dashboard</a>' + buildResultHTML(job.result);
-                try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch(e){}
-            } catch(e) {
-                container.innerHTML = '<div class="glass rounded-2xl p-6 text-red-400">Failed to load report: ' + e.message + '</div>';
             }
-        }
 
-        function renderComplianceLog() {
-            const jobsWithV = globalJobs.filter(function(j) { return j.status === 'done' && j.result && j.result.verdict === 'нарушение'; });
-            const totalViolations = jobsWithV.reduce(function(sum, j) { return sum + ((j.result.violations || []).length); }, 0);
-            document.getElementById('regulatorySummary').innerHTML = '<span class="text-forte-magenta font-bold">' + totalViolations + '</span> confirmed Article 22 violation(s) across <span class="text-white font-bold">' + jobsWithV.length + '</span> investigation(s).';
-            const tbody = document.getElementById('regulatoryBody');
-            tbody.innerHTML = '';
-            if (jobsWithV.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-500 italic">No violations recorded yet.</td></tr>';
-                return;
+            async function pollStatus(jobId, bar, text) {
+                const int = setInterval(async function() {
+                    try {
+                        const res = await fetch('/api/v1/jobs/' + jobId, { headers: { 'X-API-Key': API_KEY } });
+                        const data = await res.json();
+                        if (data.status === 'done') {
+                            clearInterval(int); clearInterval(pendingPhaseInt); pendingPhaseInt = null;
+                            bar.style.width = '100%'; text.innerText = 'Analysis Complete';
+                            setTimeout(function() { renderResult(data.result); }, 400);
+                        } else if (data.status === 'failed') {
+                            clearInterval(int); clearInterval(pendingPhaseInt); pendingPhaseInt = null;
+                            alert('Analysis failed: ' + (data.error || 'unknown'));
+                            resetUI();
+                        }
+                    } catch (e) { /* keep polling */ }
+                }, 1000);
             }
-            jobsWithV.forEach(function(j) {
-                (j.result.violations || []).forEach(function(v) {
-                    tbody.innerHTML += '<tr class="border-b border-slate-700/50 hover:bg-slate-800/30">'
-                        + '<td class="px-4 py-3 text-slate-400 text-xs">' + new Date(j.timestamp*1000).toLocaleString() + '</td>'
-                        + '<td class="px-4 py-3 text-slate-200">' + j.video_name + '</td>'
-                        + '<td class="px-4 py-3 font-mono text-forte-magenta">' + v.timecode_sec + 's-' + v.timecode_end_sec + 's</td>'
-                        + '<td class="px-4 py-3 text-slate-300">' + (v.timecode_end_sec - v.timecode_sec).toFixed(1) + 's</td>'
-                        + '<td class="px-4 py-3"><button onclick="openReport(\'' + j.job_id + '\')" class="px-3 py-1 bg-forte-magenta/20 text-forte-magenta rounded hover:bg-forte-magenta/30 text-xs font-bold cursor-pointer">View</button></td>'
-                        + '</tr>';
+
+            function resetUI() {
+                document.getElementById('uploadSection').classList.remove('hidden');
+                const ps = document.getElementById('processingSection');
+                ps.classList.add('hidden'); ps.classList.remove('flex');
+                const rs = document.getElementById('resultSection');
+                rs.classList.add('hidden'); rs.classList.remove('flex');
+                document.getElementById('fileInput').value = '';
+                document.getElementById('progressBar').style.width = '0%';
+            }
+
+            function renderResult(res) {
+                const ps = document.getElementById('processingSection');
+                ps.classList.add('hidden'); ps.classList.remove('flex');
+                const rs = document.getElementById('resultSection');
+                rs.classList.remove('hidden'); rs.classList.add('flex');
+                rs.innerHTML = buildResultHTML(res) + '<div class="flex justify-center mt-6"><button onclick="resetUI()" class="px-6 py-3 bg-forte-magenta hover:bg-forte-magenta/90 text-white font-semibold rounded-lg shadow-lg transition-all flex items-center gap-2 cursor-pointer"><i data-lucide="upload" class="w-5 h-5"></i> Analyze Another Video</button></div>';
+                safeIcons();
+                fetchHistory();
+            }
+
+            // ===== DRAG & DROP =====
+            (function() {
+                const dz = document.getElementById('uploadSection');
+                if (!dz) return;
+                dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('border-forte-magenta'); });
+                dz.addEventListener('dragleave', function() { dz.classList.remove('border-forte-magenta'); });
+                dz.addEventListener('drop', function(e) {
+                    e.preventDefault(); dz.classList.remove('border-forte-magenta');
+                    if (e.dataTransfer.files.length) uploadVideo(e.dataTransfer.files[0]);
                 });
-            });
-        }
+            })();
 
-
-        // ===== KICK OFF DASHBOARD =====
-        // Placed at end so all functions are defined first (no ordering race)
-        updateHealth();
-        fetchHistory();
-        setInterval(updateHealth, 5000);
-    </script>
+            // ===== KICK OFF (must be last) =====
+            updateHealth();
+            fetchHistory();
+            setInterval(updateHealth, 5000);
+            safeIcons();
+            console.log('[app] initialized');
+        </script>
 </body>
 </html>
 """
