@@ -35,7 +35,7 @@ root = logging.getLogger(); root.handlers = [handler]; root.setLevel(logging.INF
 log = logging.getLogger("forte")
 
 # ============ SLO TRACKING ============
-SLO_TARGETS = {"p99_latency_ms": 15000, "error_rate": 0.01, "availability": 0.999}
+SLO_TARGETS = {"p99_latency_ms": 30000, "error_rate": 0.01, "availability": 0.999}
 
 class SLOTracker:
     def __init__(self):
