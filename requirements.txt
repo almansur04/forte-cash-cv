@@ -6,3 +6,6 @@ pandas==3.0.6
 opencv-python-headless==5.0.0.93
 ultralytics==8.4.178
 lap>=0.5.13
+slowapi>=0.1.9
+prometheus-fastapi-instrumentator>=7.0.0
+python-dotenv>=1.0.0
