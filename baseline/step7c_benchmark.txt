@@ -1,0 +1,93 @@
+Loading labels...
+Initializing engine (YOLOv8n on MPS)...
+Found 42 videos. Starting full benchmark...
+
+[1/42] X-1.mov      | True: нарушение       | Pred: без нарушения   | Time:  2.22s | Mem: 568.6MB | ❌
+[2/42] X-2.mov      | True: нарушение       | Pred: без нарушения   | Time:  0.92s | Mem: 569.5MB | ❌
+[3/42] Х-10.mov     | True: без нарушения   | Pred: без нарушения   | Time:  0.85s | Mem: 569.8MB | ✅
+[4/42] Х-11.mov     | True: нарушение       | Pred: без нарушения   | Time:  1.26s | Mem: 570.0MB | ❌
+[5/42] Х-12.mov     | True: без нарушения   | Pred: без нарушения   | Time:  1.98s | Mem: 570.3MB | ✅
+[6/42] Х-13.mov     | True: нарушение       | Pred: без нарушения   | Time:  3.04s | Mem: 570.7MB | ❌
+[7/42] Х-14.mov     | True: без нарушения   | Pred: без нарушения   | Time:  6.37s | Mem: 572.1MB | ✅
+[8/42] Х-15.mov     | True: нарушение       | Pred: без нарушения   | Time:  1.07s | Mem: 572.4MB | ❌
+[9/42] Х-16.mov     | True: без нарушения   | Pred: без нарушения   | Time:  1.17s | Mem: 573.0MB | ✅
+[10/42] Х-17.mov     | True: нарушение       | Pred: без нарушения   | Time:  0.82s | Mem: 573.1MB | ❌
+[11/42] Х-18.mov     | True: нарушение       | Pred: без нарушения   | Time:  1.19s | Mem: 573.3MB | ❌
+[12/42] Х-19.mov     | True: без нарушения   | Pred: без нарушения   | Time:  2.73s | Mem: 573.9MB | ✅
+[13/42] Х-20.mov     | True: нарушение       | Pred: без нарушения   | Time:  0.67s | Mem: 574.0MB | ❌
+[14/42] Х-21.mov     | True: без нарушения   | Pred: без нарушения   | Time:  1.00s | Mem: 574.0MB | ✅
+[15/42] Х-22.mov     | True: нарушение       | Pred: без нарушения   | Time:  1.06s | Mem: 574.5MB | ❌
+[16/42] Х-23.mov     | True: без нарушения   | Pred: без нарушения   | Time:  0.95s | Mem: 574.6MB | ✅
+[17/42] Х-24.mov     | True: нарушение       | Pred: без нарушения   | Time:  0.79s | Mem: 574.7MB | ❌
+[18/42] Х-25.mov     | True: без нарушения   | Pred: без нарушения   | Time:  1.55s | Mem: 575.0MB | ✅
+[19/42] Х-26.mov     | True: нарушение       | Pred: без нарушения   | Time:  1.03s | Mem: 575.1MB | ❌
+[20/42] Х-27.mov     | True: без нарушения   | Pred: без нарушения   | Time:  1.28s | Mem: 575.2MB | ✅
+[21/42] Х-28.mov     | True: нарушение       | Pred: без нарушения   | Time:  0.87s | Mem: 575.3MB | ❌
+[22/42] Х-29.mov     | True: без нарушения   | Pred: без нарушения   | Time:  0.90s | Mem: 575.3MB | ✅
+[23/42] Х-3.mov      | True: без нарушения   | Pred: без нарушения   | Time:  1.05s | Mem: 575.4MB | ✅
+[24/42] Х-30.mov     | True: нарушение       | Pred: без нарушения   | Time:  0.97s | Mem: 575.4MB | ❌
+[25/42] Х-31.mov     | True: без нарушения   | Pred: нарушение       | Time:  1.19s | Mem: 575.5MB | ❌
+[26/42] Х-32.mov     | True: нарушение       | Pred: без нарушения   | Time:  1.09s | Mem: 575.6MB | ❌
+[27/42] Х-33.mov     | True: нарушение       | Pred: без нарушения   | Time:  0.76s | Mem: 575.6MB | ❌
+[28/42] Х-34.mov     | True: нарушение       | Pred: без нарушения   | Time:  0.95s | Mem: 575.7MB | ❌
+[29/42] Х-35.mov     | True: без нарушения   | Pred: без нарушения   | Time:  2.69s | Mem: 575.9MB | ✅
+[30/42] Х-37.mov     | True: без нарушения   | Pred: без нарушения   | Time:  0.86s | Mem: 576.0MB | ✅
+[31/42] Х-38.mov     | True: нарушение       | Pred: без нарушения   | Time:  2.79s | Mem: 576.3MB | ❌
+[32/42] Х-39.mov     | True: без нарушения   | Pred: без нарушения   | Time:  3.75s | Mem: 576.6MB | ✅
+[33/42] Х-4.mov      | True: нарушение       | Pred: без нарушения   | Time:  3.43s | Mem: 577.0MB | ❌
+[34/42] Х-40.mov     | True: нарушение       | Pred: нарушение       | Time:  1.27s | Mem: 577.1MB | ✅
+[35/42] Х-43.mov     | True: без нарушения   | Pred: без нарушения   | Time:  1.17s | Mem: 577.1MB | ✅
+[36/42] Х-44.mov     | True: нарушение       | Pred: без нарушения   | Time:  1.06s | Mem: 577.2MB | ❌
+[37/42] Х-45.mov     | True: без нарушения   | Pred: без нарушения   | Time:  1.64s | Mem: 577.5MB | ✅
+[38/42] Х-46.mov     | True: нарушение       | Pred: без нарушения   | Time:  1.01s | Mem: 577.5MB | ❌
+[39/42] Х-47.mov     | True: нарушение       | Pred: без нарушения   | Time:  3.39s | Mem: 577.8MB | ❌
+[40/42] Х-48.mov     | True: без нарушения   | Pred: без нарушения   | Time:  3.35s | Mem: 578.1MB | ✅
+[41/42] Х-5.mov      | True: без нарушения   | Pred: без нарушения   | Time:  3.33s | Mem: 578.3MB | ✅
+[42/42] Х-8.mov      | True: без нарушения   | Pred: без нарушения   | Time:  1.81s | Mem: 578.5MB | ✅
+
+==================================================
+🎯 FINAL BENCHMARK RESULTS (M1 MPS, 2 FPS)
+==================================================
+Videos Processed: 42
+Total Time:       74.56s
+Avg Time/Video:   1.70s  (Max: 6.37s)
+Peak RAM:         578.5 MB
+--------------------------------------------------
+Accuracy:         47.62%  (20/42)
+Precision:        50.00%  (1 TP / 2 total positives)
+Recall:           4.55%  (1 TP / 22 actual violations)
+F1-Score:         8.33%
+--------------------------------------------------
+False Positives (FP): 1
+False Negatives (FN): 21  <-- MUST BE MINIMIZED
+==================================================
+
+False Positive Videos (flagged but clean):
+   video  time_sec               violation_types
+Х-31.mov      1.19 cashier_away_from_workstation
+
+False Negative Videos (missed violations):
+   video  time_sec
+ X-1.mov      2.22
+ X-2.mov      0.92
+Х-11.mov      1.26
+Х-13.mov      3.04
+Х-15.mov      1.07
+Х-17.mov      0.82
+Х-18.mov      1.19
+Х-20.mov      0.67
+Х-22.mov      1.06
+Х-24.mov      0.79
+Х-26.mov      1.03
+Х-28.mov      0.87
+Х-30.mov      0.97
+Х-32.mov      1.09
+Х-33.mov      0.76
+Х-34.mov      0.95
+Х-38.mov      2.79
+ Х-4.mov      3.43
+Х-44.mov      1.06
+Х-46.mov      1.01
+Х-47.mov      3.39
+
+Detailed CSV saved to: baseline/benchmark_full_results.csv

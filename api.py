@@ -1,139 +1,183 @@
+import os, uuid, shutil, json
+from pathlib import Path
+from typing import Dict, Any
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, BackgroundTasks
 from fastapi.security.api_key import APIKeyHeader
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-import uuid
-import shutil
-import cv2
-import os
-import pandas as pd
 from engine import CashSecurityEngine
 
-app = FastAPI(
-    title="ForteBank Cash Discipline API",
-    description="Offline CV analysis of cashier workspaces.",
-    version="1.0.0"
-)
-
-# Security
+# --- Config ---
 API_KEY = "forte-hack-2026"
 api_key_header = APIKeyHeader(name="X-API-Key")
+UPLOAD_DIR = Path("tmp_uploads"); UPLOAD_DIR.mkdir(exist_ok=True)
+EVIDENCE_DIR = Path("baseline/evidence"); EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
 
-# In-Memory Database for Hackathon Prototype
-jobs = {}
+# --- App & Engine ---
+app = FastAPI(title="ForteBank Cash Discipline API", version="2.0.0")
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_credentials=True,
+    allow_methods=["*"], allow_headers=["*"]
+)
 
-# Initialize our ML Engine (Singleton)
-engine = CashSecurityEngine()
+print("Initializing engine...")
+engine = CashSecurityEngine(rules_csv="violation_rules_verified.csv")
 
-# Load Regulatory Rules mapping
-try:
-    rules_df = pd.read_csv("violation_rules.csv")
-    rules_dict = rules_df.set_index("violation_type").to_dict(orient="index")
-except FileNotFoundError:
-    print("Warning: violation_rules.csv not found. Regulatory mapping will be empty.")
-    rules_dict = {}
+# --- Job Store ---
+# Schema: { job_id: { "status": "processing|done|failed", "result": {...} | None, "error": str | None } }
+jobs: Dict[str, Dict[str, Any]] = {}
 
-def verify_api_key(api_key: str = Depends(api_key_header)):
+def run_engine_task(job_id: str, video_path: Path):
+    """Background task to process the video."""
+    try:
+        # Point evidence dir to the shared static folder
+        result = engine.analyze_video(video_path, sample_fps=2, evidence_dir=str(EVIDENCE_DIR))
+        
+        # Post-process evidence paths to be web URLs instead of local paths
+        for v in result.get("violations", []):
+            v["evidence_frames"] = [
+                f"/evidence/{Path(p).name}" for p in v.get("evidence_frames", []) if p
+            ]
+        
+        jobs[job_id]["status"] = "done"
+        jobs[job_id]["result"] = result
+    except Exception as e:
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+    finally:
+        if video_path.exists():
+            video_path.unlink()  # clean up temp file
+
+# --- Auth ---
+def verify_key(api_key: str = Depends(api_key_header)):
     if api_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Invalid API Key")
+        raise HTTPException(status_code=403, detail="Invalid X-API-Key")
     return api_key
 
-def process_video_task(job_id: str, file_path: str):
-    jobs[job_id]["status"] = "processing"
+# --- Endpoints ---
+@app.post("/api/v1/analyze")
+async def analyze(background_tasks: BackgroundTasks, file: UploadFile = File(...), auth: str = Depends(verify_key)):
+    if not file.filename.endswith(".mov"):
+        raise HTTPException(status_code=400, detail="Only .mov files are supported")
     
-    cap = cv2.VideoCapture(file_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    if fps == 0 or fps is None: fps = 30
-    frame_interval = int(fps)
-    
-    frame_idx = 0
-    seconds_processed = 0
-    violations_found = []
-    
-    # Process only first 5 seconds to keep the test fast
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
-            
-        if frame_idx % frame_interval == 0:
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            current_sec = seconds_processed + 1
-            _, frame_violations = engine.analyze_frame(frame_rgb, current_sec)
-            
-            for v in frame_violations:
-                v_map = {
-                    "unauthorized_person": "unauthorized_person_in_zone",
-                    "unattended_open_safe": "unattended_cash_drawer"
-                }
-                csv_key = v_map.get(v["type"], v["type"])
-                
-                rule_info = rules_dict.get(csv_key, {"clause_number": "Глава 2", "presumed_violation": "Unknown Anomaly"})
-                
-                violations_found.append({
-                    "type": csv_key,
-                    "timecode_sec": v["timecode_sec"], # Uses the smoothed start time!
-                    "description": f"{rule_info['presumed_violation']} (Evidence: {v['evidence']})",
-                    "clause": rule_info.get("clause_number", ""),
-                    "regulatory_link": rule_info.get("adilet_link", "")
-                })
-            
-            for v in frame_violations:
-                # Map raw engine types to our CSV keys
-                v_map = {
-                    "unauthorized_person": "unauthorized_person_in_zone",
-                    "unattended_open_safe": "unattended_cash_drawer"
-                }
-                csv_key = v_map.get(v["type"], v["type"])
-                
-                rule_info = rules_dict.get(csv_key, {"clause_number": "Глава 2", "presumed_violation": "Unknown Anomaly"})
-                
-                violations_found.append({
-                    "type": csv_key,
-                    "timecode_sec": seconds_processed + 1,
-                    "description": f"{rule_info['presumed_violation']} (VLM Evidence: {v['evidence'].strip()})",
-                    "clause": rule_info.get("clause_number", ""),
-                    "regulatory_link": rule_info.get("adilet_link", "")
-                })
-            
-            seconds_processed += 1
-        frame_idx += 1
-        
-    cap.release()
-    
-    if os.path.exists(file_path):
-        os.remove(file_path)
-    
-    # Verdict logic
-    verdict = "нарушение" if len(violations_found) > 0 else "без нарушения"
-    
-    jobs[job_id]["status"] = "done"
-    jobs[job_id]["result"] = {
-        "verdict": verdict,
-        "violations": violations_found
-    }
-
-@app.post("/api/v1/analyze", summary="Upload video for analysis")
-async def analyze_video(background_tasks: BackgroundTasks, file: UploadFile = File(...), api_key: str = Depends(verify_api_key)):
     job_id = str(uuid.uuid4())
-    file_path = f"temp_{job_id}.mov"
+    tmp_path = UPLOAD_DIR / f"{job_id}_{file.filename}"
     
-    with open(file_path, "wb") as buffer:
+    with open(tmp_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    jobs[job_id] = {"status": "pending", "result": None}
+    jobs[job_id] = {"status": "processing", "result": None, "error": None}
+    background_tasks.add_task(run_engine_task, job_id, tmp_path)
     
-    # Send to background worker
-    background_tasks.add_task(process_video_task, job_id, file_path)
-    
-    return {"job_id": job_id, "status": "pending"}
+    return {"job_id": job_id, "status": "processing"}
 
-@app.get("/api/v1/jobs/{job_id}", summary="Get job status and results")
-def get_job_status(job_id: str, api_key: str = Depends(verify_api_key)):
+@app.get("/api/v1/jobs/{job_id}")
+async def get_job(job_id: str, auth: str = Depends(verify_key)):
     if job_id not in jobs:
         raise HTTPException(status_code=404, detail="Job not found")
     return jobs[job_id]
 
+# --- Static Evidence ---
+@app.get("/evidence/{filename}")
+async def get_evidence(filename: str):
+    p = EVIDENCE_DIR / filename
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="Evidence image not found")
+    return FileResponse(p)
+
+# --- Simple Web UI ---
+@app.get("/", response_class=HTMLResponse)
+async def ui():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>ForteBank Cash Control</title>
+        <style>
+            body { font-family: -apple-system, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+            .card { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+            .violation { border-left: 4px solid #d32f2f; background: #ffebee; padding: 1rem; margin-bottom: 1rem; }
+            .clean { border-left: 4px solid #388e3c; background: #e8f5e9; padding: 1rem; margin-bottom: 1rem; }
+            .evidence { max-height: 300px; border: 1px solid #ccc; margin-top: 10px; }
+            button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        </style>
+    </head>
+    <body>
+        <h1>ForteBank Cash Control API</h1>
+        <div class="card">
+            <h2>Upload Video</h2>
+            <input type="file" id="fileInput" accept=".mov">
+            <button onclick="uploadVideo()">Analyze</button>
+            <p id="statusMsg" style="color: #666; margin-top: 10px;"></p>
+        </div>
+        <div id="resultContainer"></div>
+
+        <script>
+            const API_KEY = "forte-hack-2026";
+            async function uploadVideo() {
+                const file = document.getElementById('fileInput').files[0];
+                if (!file) return alert("Select a .mov file first");
+                
+                document.getElementById('statusMsg').innerText = "Uploading...";
+                document.getElementById('resultContainer').innerHTML = "";
+                
+                const formData = new FormData();
+                formData.append("file", file);
+                
+                try {
+                    const res = await fetch("/api/v1/analyze", {
+                        method: "POST",
+                        headers: {"X-API-Key": API_KEY},
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (res.ok) pollStatus(data.job_id);
+                    else throw new Error(data.detail);
+                } catch (e) {
+                    document.getElementById('statusMsg').innerText = "Error: " + e.message;
+                }
+            }
+
+            async function pollStatus(jobId) {
+                document.getElementById('statusMsg').innerText = "Processing video (this takes ~10s)...";
+                const interval = setInterval(async () => {
+                    const res = await fetch(`/api/v1/jobs/${jobId}`, {headers: {"X-API-Key": API_KEY}});
+                    const data = await res.json();
+                    
+                    if (data.status === "done") {
+                        clearInterval(interval);
+                        document.getElementById('statusMsg').innerText = "Done!";
+                        renderResult(data.result);
+                    } else if (data.status === "failed") {
+                        clearInterval(interval);
+                        document.getElementById('statusMsg').innerText = "Failed: " + data.error;
+                    }
+                }, 2000);
+            }
+
+            function renderResult(res) {
+                let html = `<div class="card"><h3>Result for ${res.video}</h3><p>Duration: ${res.duration_sec}s</p>`;
+                if (res.verdict === "нарушение") {
+                    html += `<h4 style="color: #d32f2f;">Violations Found</h4>`;
+                    res.violations.forEach(v => {
+                        html += `<div class="violation">
+                            <strong>${v.type}</strong> (${v.timecode_sec}s - ${v.timecode_end_sec}s)<br>
+                            <em>${v.description}</em><br>
+                            <a href="${v.adilet_url}" target="_blank">RK NBRK No. 231, ${v.article_number}</a>
+                            ${v.evidence_frames.map(img => `<br><img src="${img}" class="evidence">`).join('')}
+                        </div>`;
+                    });
+                } else {
+                    html += `<div class="clean"><strong>No violations detected.</strong> Cashier maintained station.</div>`;
+                }
+                html += `</div>`;
+                document.getElementById('resultContainer').innerHTML = html;
+            }
+        </script>
+    </body>
+    </html>
+    """
+
 if __name__ == "__main__":
-    print("\n🚀 Starting ForteBank Cash Security API on http://127.0.0.1:8000")
-    print("👉 View the Interactive UI at: http://127.0.0.1:8000/docs\n")
-    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=8000)

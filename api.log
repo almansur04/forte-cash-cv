@@ -1,0 +1,49 @@
+Initializing engine...
+INFO:     Started server process [12015]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:51103 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51105 - "GET /api/v1/jobs/95eb954c-6248-4921-be1f-3726c8d20e68 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51106 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51106 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51106 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51321 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51323 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51323 - "GET /api/v1/jobs/f60308e8-9715-401a-aa86-40ea4b71d1d7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51323 - "GET /api/v1/jobs/f60308e8-9715-401a-aa86-40ea4b71d1d7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51323 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51323 - "GET /api/v1/jobs/ee245b7c-ccc3-482c-ad81-76f1fe3bea56 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51323 - "GET /api/v1/jobs/ee245b7c-ccc3-482c-ad81-76f1fe3bea56 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51323 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51323 - "GET /api/v1/jobs/ed94c640-99b2-42d1-9eee-6e0e780dfa00 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51323 - "GET /evidence/ed94c640-99b2-42d1-9eee-6e0e780dfa00_X-45_cashier_away_from_workstation_0s.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51326 - "GET /evidence/ed94c640-99b2-42d1-9eee-6e0e780dfa00_X-45_cashier_away_from_workstation_0s.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51327 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51327 - "GET /api/v1/jobs/255697f5-f819-4f72-9c8d-73339c6928f4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51329 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51329 - "GET /api/v1/jobs/6284f1f4-9bf9-4c48-9212-0210b73b364b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51329 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51329 - "GET /api/v1/jobs/a280817c-af60-4e7f-85b5-91dad3e81196 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51331 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51331 - "GET /api/v1/jobs/aba6c9a2-b5ba-40ff-9020-acb5eea95f34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51331 - "GET /api/v1/jobs/aba6c9a2-b5ba-40ff-9020-acb5eea95f34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51356 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51356 - "GET /api/v1/jobs/1ea532a9-d12b-418a-b7df-27a007e7f4a9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51358 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51358 - "GET /api/v1/jobs/2af3b38a-4ea8-49ba-ad70-37a93e9cfefc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51358 - "GET /api/v1/jobs/2af3b38a-4ea8-49ba-ad70-37a93e9cfefc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51358 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51358 - "GET /api/v1/jobs/a5997ca8-4605-49c9-bbd8-8bd75afaa3f2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51358 - "GET /evidence/a5997ca8-4605-49c9-bbd8-8bd75afaa3f2_X-40_cashier_away_from_workstation_0s.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51358 - "GET /evidence/a5997ca8-4605-49c9-bbd8-8bd75afaa3f2_X-40_cashier_away_from_workstation_0s.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51359 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51359 - "GET /api/v1/jobs/503a7cbb-952c-4302-85a6-d7e49b5f8a0c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51359 - "GET /api/v1/jobs/503a7cbb-952c-4302-85a6-d7e49b5f8a0c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51359 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51359 - "GET /api/v1/jobs/2b641fc5-f7dd-4cc9-94f9-897c7e2087ce HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51524 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51524 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51525 - "POST /api/v1/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51525 - "GET /api/v1/jobs/c85371ed-d2a8-447f-a01d-67b16512c097 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51525 - "GET /evidence/c85371ed-d2a8-447f-a01d-67b16512c097_X-11_cashier_away_from_workstation_11s.jpg HTTP/1.1" 200 OK

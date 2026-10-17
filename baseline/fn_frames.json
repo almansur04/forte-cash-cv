@@ -1,0 +1,122 @@
+[
+  {
+    "video": "Х-11",
+    "t_sec": 18,
+    "file": "Х-11.mov",
+    "frame": "baseline/fn_frames/Х-11_t18.jpg",
+    "describe": "A person in a pink shirt stands near a desk with a computer, printer, and phone, gazing out a window with a view of a building and cars.",
+    "people": "There is one person in the image, and they are standing in a room near a window.",
+    "hands": "Yes, there is a woman's hand visible in the image. She is holding a printer, which is placed on a desk.",
+    "cash": "No, there are no cash, banknotes, or bundles of money visible in the image."
+  },
+  {
+    "video": "Х-13",
+    "t_sec": 47,
+    "file": "Х-13.mov",
+    "frame": "baseline/fn_frames/Х-13_t47.jpg",
+    "describe": "A woman in a pink shirt and black pants stands at a wooden desk, holding a black phone, with a laptop, printer, and filing cabinet nearby.",
+    "people": "There is one person in the image, and they are standing in an office.",
+    "hands": "Yes, there is a woman's hand visible in the image. She is standing near a desk with a laptop and a printer.",
+    "cash": "No, there are no cash, banknotes, or bundles of money visible in the image."
+  },
+  {
+    "video": "Х-15",
+    "t_sec": 15,
+    "file": "Х-15.mov",
+    "frame": "baseline/fn_frames/Х-15_t15.jpg",
+    "describe": "A person in a pink shirt and black pants stands near a desk with a laptop, phone, and printer, in a modern office with a glass wall and blue carpet.",
+    "people": "There is one person in the image, and they are standing in an office.",
+    "hands": "Yes, there is a woman's hand visible in the image. She is standing near a desk with a laptop and a printer on it.",
+    "cash": "No, there are no cash, banknotes, or bundles of money visible in the image."
+  },
+  {
+    "video": "Х-20",
+    "t_sec": 5,
+    "file": "Х-20.mov",
+    "frame": "baseline/fn_frames/Х-20_t5.jpg",
+    "describe": "A woman in a pink shirt and black pants stands behind a wooden desk, holding a black phone, with a laptop and printer nearby, in a modern office setting.",
+    "people": "There are two people in the image. They are standing in an office, specifically in front of a desk.",
+    "hands": "Yes, there are hands visible in the image. A woman is standing at a desk, and she is holding a cup.",
+    "cash": "No, there are no cash, banknotes, or bundles of money visible in the image."
+  },
+  {
+    "video": "Х-22",
+    "t_sec": 14,
+    "file": "Х-22.mov",
+    "frame": "baseline/fn_frames/Х-22_t14.jpg",
+    "describe": "A woman in a pink shirt stands near a wooden desk with a laptop, phone, and printer, in a modern office with a glass wall and white walls.",
+    "people": "There is one person in the image, and they are standing in an office.",
+    "hands": "No hands are visible in the image.",
+    "cash": "No, there are no cash, banknotes, or bundles of money visible in the image."
+  },
+  {
+    "video": "Х-24",
+    "t_sec": 8,
+    "file": "Х-24.mov",
+    "frame": "baseline/fn_frames/Х-24_t8.jpg",
+    "describe": "A person in a pink shirt and black pants stands at a desk in a modern office, holding a phone and surrounded by a laptop, printer, and filing cabinet.",
+    "people": "There is one person in the image, and they are standing in an office.",
+    "hands": "Yes, there is a woman's hand visible in the image. She is standing near a desk with a laptop and a printer.",
+    "cash": "No, there are no cash, banknotes, or bundles of money visible in the image."
+  },
+  {
+    "video": "Х-26",
+    "t_sec": 9,
+    "file": "Х-26.mov",
+    "frame": "baseline/fn_frames/Х-26_t9.jpg",
+    "describe": "A woman in a pink shirt works at a wooden desk in a modern office, surrounded by a white desk, black computer, and gray filing cabinet.",
+    "people": "There is one person in the image, and they are sitting at a desk in an office.",
+    "hands": "Yes, there is a woman's hand visible in the image. She is sitting at a desk in an office, holding a phone to her ear.",
+    "cash": "No, there are no cash, banknotes, or bundles of money visible in the image."
+  },
+  {
+    "video": "Х-28",
+    "t_sec": 7,
+    "file": "Х-28.mov",
+    "frame": "baseline/fn_frames/Х-28_t7.jpg",
+    "describe": "A woman in a pink shirt stands at a wooden desk, using a laptop and phone, with a printer and filing cabinet nearby, in a modern office setting.",
+    "people": "There is one person in the image, and they are standing in an office.",
+    "hands": "Yes, there is a woman's hand visible in the image. She is standing near a desk with a laptop and a printer.",
+    "cash": "No, there are no cash, banknotes, or bundles of money visible in the image."
+  },
+  {
+    "video": "Х-32",
+    "t_sec": 5,
+    "file": "Х-32.mov",
+    "frame": "baseline/fn_frames/Х-32_t5.jpg",
+    "describe": "A woman in a pink shirt stands in a modern office, holding a black phone, with a wooden desk, printer, and computer monitor nearby.",
+    "people": "There is one person in the image, and they are standing in an office.",
+    "hands": "Yes, there is a woman's hand visible in the image. She is standing near a desk in an office setting.",
+    "cash": "No, there is no cash, banknotes, or bundles of money visible in the image."
+  },
+  {
+    "video": "Х-40",
+    "t_sec": 17,
+    "file": "Х-40.mov",
+    "frame": "baseline/fn_frames/Х-40_t17.jpg",
+    "describe": "A woman in a white blouse and black pants stands at a desk, using a black printer and surrounded by office equipment, with a window and blue carpet in the background.",
+    "people": "There is one person in the image, and they are standing in an office.",
+    "hands": "Yes, there is a woman's hand visible in the image. She is standing near a desk with a laptop and a printer.",
+    "cash": "No, there are no cash, banknotes, or bundles of money visible in the image."
+  },
+  {
+    "video": "Х-44",
+    "t_sec": 16,
+    "file": "Х-44.mov",
+    "frame": "baseline/fn_frames/Х-44_t16.jpg",
+    "describe": "A woman in a white blouse works at a wooden desk in a modern office, surrounded by a white wall, blue carpet, and a window view of a bustling city.",
+    "people": "There is one person in the image, and they are sitting at a desk in an office.",
+    "hands": "Yes, there are hands visible in the image. The woman is sitting at a desk, and she is holding a cell phone.",
+    "cash": "No, there are no cash, banknotes, or bundles of money visible in the image."
+  },
+  {
+    "video": "Х-46",
+    "t_sec": 11,
+    "file": "Х-46.mov",
+    "frame": "baseline/fn_frames/Х-46_t11.jpg",
+    "describe": "A young woman works at a desk in a modern office, using a laptop, phone, and printer, with a view of the city through a large window.",
+    "people": "There is one person in the image, and they are sitting at a desk in an office.",
+    "hands": "Yes, there are hands visible in the image. A woman is sitting at a desk in an office, holding a cup.",
+    "cash": "No, there is no cash, banknotes, or bundles of money visible in the image. The woman is sitting at a desk in an office, and there are no visible financial transactions taking place."
+  }
+]
