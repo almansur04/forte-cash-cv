@@ -29,16 +29,19 @@ engine = CashSecurityEngine(rules_csv="violation_rules_verified.csv")
 jobs: Dict[str, Dict[str, Any]] = {}
 
 def run_engine_task(job_id: str, video_path: Path):
-    """Background task to process the video."""
     try:
-        # Point evidence dir to the shared static folder
         result = engine.analyze_video(video_path, sample_fps=2, evidence_dir=str(EVIDENCE_DIR))
         
-        # Post-process evidence paths to be web URLs instead of local paths
+        # Preserve the video for playback
+        playback_dir = Path("baseline/evidence")
+        playback_path = playback_dir / f"{job_id}_{video_path.name}"
+        if playback_path.exists():
+            playback_path.unlink()
+        shutil.copy(str(video_path), str(playback_path))
+        
         for v in result.get("violations", []):
-            v["evidence_frames"] = [
-                f"/evidence/{Path(p).name}" for p in v.get("evidence_frames", []) if p
-            ]
+            v["evidence_frames"] = [f"/evidence/{Path(p).name}" for p in v.get("evidence_frames", []) if p]
+            v["video_url"] = f"/evidence/{playback_path.name}"
         
         jobs[job_id]["status"] = "done"
         jobs[job_id]["result"] = result
@@ -47,7 +50,7 @@ def run_engine_task(job_id: str, video_path: Path):
         jobs[job_id]["error"] = str(e)
     finally:
         if video_path.exists():
-            video_path.unlink()  # clean up temp file
+            video_path.unlink()
 
 # --- Auth ---
 def verify_key(api_key: str = Depends(api_key_header)):
@@ -71,6 +74,17 @@ async def analyze(background_tasks: BackgroundTasks, file: UploadFile = File(...
     background_tasks.add_task(run_engine_task, job_id, tmp_path)
     
     return {"job_id": job_id, "status": "processing"}
+
+@app.get("/health")
+async def health():
+    return {
+        "status": "healthy",
+        "device": engine.device,
+        "model": "yolov8n",
+        "rules_loaded": len(engine.rules),
+        "active_jobs": sum(1 for j in jobs.values() if j["status"] == "processing"),
+        "total_jobs": len(jobs),
+    }
 
 @app.get("/api/v1/jobs/{job_id}")
 async def get_job(job_id: str, auth: str = Depends(verify_key)):
@@ -162,9 +176,10 @@ async def ui():
                     html += `<h4 style="color: #d32f2f;">Violations Found</h4>`;
                     res.violations.forEach(v => {
                         html += `<div class="violation">
-                            <strong>${v.type}</strong> (${v.timecode_sec}s - ${v.timecode_end_sec}s)<br>
+                            <strong>${v.type}</strong> (${v.timecode_sec}s - ${v.timecode_end_sec}s, duration ${v.duration_sec}s)<br>
                             <em>${v.description}</em><br>
                             <a href="${v.adilet_url}" target="_blank">RK NBRK No. 231, ${v.article_number}</a>
+                            <br><video controls style="max-width: 100%; margin-top: 10px;"src="${v.video_url}#t=${v.timecode_sec},${v.timecode_end_sec}"></video>
                             ${v.evidence_frames.map(img => `<br><img src="${img}" class="evidence">`).join('')}
                         </div>`;
                     });
