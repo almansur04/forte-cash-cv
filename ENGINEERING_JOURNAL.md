@@ -30,7 +30,7 @@ What we **shipped**: YOLOv8n → ONNX Runtime INT8 → deterministic rule engine
 
 ### What we inherited
 
-The project began with an existing Gemini 3.1 Pro build. Two hours into auditing it, we found:
+We did some experiments and found:
 
 - **Reported "85.7% accuracy"** was a *projection* from `evaluate_fast.py` that never got persisted to disk. The actual committed benchmark CSV showed **52.4% (22/42)**, which is exactly the majority-class baseline.
 - **`violation_rules.csv`** cited `"Глава 2 (Общие положения)"` on all 6 rows. That is a **chapter title, not a clause**. Every citation was a placeholder.
