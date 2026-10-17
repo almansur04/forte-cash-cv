@@ -1,4 +1,4 @@
-import os, uuid, shutil, json, time, sqlite3
+import os, uuid, shutil, json, time, sqlite3, subprocess
 from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, File, UploadFile, Depends, BackgroundTasks, Request, Header, HTTPException
@@ -92,10 +92,26 @@ def run_engine_task(job_id: str, video_path: Path, original_name: str):
         slo.record(t.elapsed_ms, is_error=False)
         CIRCUIT_STATE.set(0 if engine_breaker.state == "closed" else 1)
 
-        playback_path = EVIDENCE_DIR / f"{job_id}_{original_name}"
-        if playback_path.exists():
-            playback_path.unlink()
-        shutil.copy(str(video_path), str(playback_path))
+        # For violations: compress to 30s 480p MP4 (2MB, tunnel-friendly)
+        # For clean: simple copy (fast, no playback needed)
+        if result.get("violations"):
+            playback_path = EVIDENCE_DIR / f"{job_id}_preview.mp4"
+            if playback_path.exists(): playback_path.unlink()
+            try:
+                subprocess.run([
+                    "ffmpeg", "-y", "-i", str(video_path),
+                    "-t", "30", "-vf", "scale=480:-1",
+                    "-c:v", "libx264", "-crf", "28", "-preset", "ultrafast", "-an",
+                    str(playback_path)
+                ], capture_output=True, timeout=30, check=True)
+                print(f"[preview] compressed: {playback_path.name}")
+            except Exception as e:
+                print(f"[preview] ffmpeg failed: {e}")
+                shutil.copy(str(video_path), str(playback_path))
+        else:
+            playback_path = EVIDENCE_DIR / f"{job_id}_{original_name}"
+            if playback_path.exists(): playback_path.unlink()
+            shutil.copy(str(video_path), str(playback_path))
 
         for v in result.get("violations", []):
             v["evidence_frames"] = [

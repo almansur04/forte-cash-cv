@@ -129,8 +129,6 @@ class CashSecurityEngine:
         while cap.isOpened():
             ok, frame = cap.read()
             if not ok: break
-            if frame_idx % step != 0:
-                frame_idx += 1; continue
             t_sec = frame_idx / fps
 
             boxes_xywh = self._infer(frame)
@@ -157,8 +155,12 @@ class CashSecurityEngine:
                 self.reported["cashier_away_from_workstation"] = True
 
                 break  # early-stop after first violation
-            frame_idx += 1
+            frame_idx += step
             processed += 1
+            # FAST SKIP: grab() advances decoder without decoding pixels (~20x faster)
+            for _ in range(step - 1):
+                if not cap.grab():
+                    break
 
         cap.release()
         verdict = "нарушение" if violations else "без нарушения"
