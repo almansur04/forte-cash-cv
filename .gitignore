@@ -17,9 +17,6 @@ api.log
 api.pid
 
 # Evidence (regenerated at runtime, don't commit)
-baseline/evidence/
-baseline/fn_frames/
-baseline/diag_*.csv
 
 # OS / IDE
 .DS_Store
@@ -35,3 +32,6 @@ baseline/diag_*.csv
 # Model weights (kept in git for hackathon reproducibility)
 # yolov8n.pt
 # *.gguf
+
+# Dev workspace (benchmarks, diagnostics — do not ship)
+baseline/
