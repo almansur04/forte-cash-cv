@@ -50,14 +50,32 @@ def process_video_task(job_id: str, file_path: str):
     violations_found = []
     
     # Process only first 5 seconds to keep the test fast
-    while cap.isOpened() and seconds_processed < 5:
+    while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
             
         if frame_idx % frame_interval == 0:
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            _, frame_violations = engine.analyze_frame(frame_rgb)
+            current_sec = seconds_processed + 1
+            _, frame_violations = engine.analyze_frame(frame_rgb, current_sec)
+            
+            for v in frame_violations:
+                v_map = {
+                    "unauthorized_person": "unauthorized_person_in_zone",
+                    "unattended_open_safe": "unattended_cash_drawer"
+                }
+                csv_key = v_map.get(v["type"], v["type"])
+                
+                rule_info = rules_dict.get(csv_key, {"clause_number": "Глава 2", "presumed_violation": "Unknown Anomaly"})
+                
+                violations_found.append({
+                    "type": csv_key,
+                    "timecode_sec": v["timecode_sec"], # Uses the smoothed start time!
+                    "description": f"{rule_info['presumed_violation']} (Evidence: {v['evidence']})",
+                    "clause": rule_info.get("clause_number", ""),
+                    "regulatory_link": rule_info.get("adilet_link", "")
+                })
             
             for v in frame_violations:
                 # Map raw engine types to our CSV keys
