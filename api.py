@@ -928,6 +928,12 @@ async def ui():
             });
         }
 
+
+        // ===== KICK OFF DASHBOARD =====
+        // Placed at end so all functions are defined first (no ordering race)
+        updateHealth();
+        fetchHistory();
+        setInterval(updateHealth, 5000);
     </script>
 </body>
 </html>
