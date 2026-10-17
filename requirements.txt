@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+python-multipart
+pydantic
+pandas
+opencv-python-headless
+torch
+torchvision
+ultralytics
+transformers==4.44.2
+einops
+pillow
