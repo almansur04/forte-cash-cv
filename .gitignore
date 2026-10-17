@@ -1,0 +1,5 @@
+venv/
+__pycache__/
+*.csv
+!violation_rules.csv
+.DS_Store

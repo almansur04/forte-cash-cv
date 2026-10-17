@@ -1,0 +1,4 @@
+violation_type,visual_cue,presumed_violation,regulatory_act,clause_number,adilet_link
+unattended_cash_drawer,Cashier leaves the frame while the cash drawer/safe remains visibly open.,Failure to secure valuables/lock the cash repository when leaving the workplace.,NBRK Resolution No. 231 (29.11.2019),Глава 2 (Общие положения),https://adilet.zan.kz/rus/docs/V1900019680
+unauthorized_person_in_zone,Two or more people detected simultaneously inside the cashier secure workspace.,Presence of unauthorized persons in the cash desk zone.,NBRK Resolution No. 231 (29.11.2019),Глава 2 (Общие положения),https://adilet.zan.kz/rus/docs/V1900019680
+exposed_cash_on_counter,Cash bundles left on the counter/table unattended by the cashier.,Improper storage of cash during operations.,NBRK Resolution No. 231 (29.11.2019),Глава 2 (Общие положения),https://adilet.zan.kz/rus/docs/V1900019680
