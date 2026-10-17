@@ -69,3 +69,6 @@ Open http://localhost:8000. API key: `forte-hack-2026`.
 - Free-tier hosting sleeps after 15 min idle (30-50s wake).
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md), [`COMPLIANCE.md`](COMPLIANCE.md), [`PRODUCTION_READINESS.md`](PRODUCTION_READINESS.md), [`SCALING_ARCHITECTURE.md`](SCALING_ARCHITECTURE.md).
+## Presentation
+
+The 12-slide deck for a research/engineering audience lives at [`presentation/ForteBank_Vision.pptx`](presentation/ForteBank_Vision.pptx). Generator script: [`presentation/build.py`](presentation/build.py).
