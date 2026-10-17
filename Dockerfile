@@ -2,7 +2,7 @@
 FROM forte-cash-base:1.0
 
 WORKDIR /app
-COPY api.py engine.py violation_rules_verified.csv yolov8n.pt ./
+COPY api.py engine.py production.py violation_rules_verified.csv yolov8n.pt ./
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \

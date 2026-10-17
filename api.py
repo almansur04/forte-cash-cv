@@ -1,17 +1,20 @@
 import os, uuid, shutil, json, time, sqlite3
 from pathlib import Path
-from typing import Dict, Any
-from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, BackgroundTasks, Request
+from typing import Optional
+from fastapi import FastAPI, File, UploadFile, Depends, BackgroundTasks, Request, Header, HTTPException
 from fastapi.security.api_key import APIKeyHeader
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Counter, Histogram, Gauge
 import uvicorn
 from engine import CashSecurityEngine
 from dotenv import load_dotenv
+from production import (log, new_trace_id, current_trace_id, audit, slo, timer,
+                        CircuitBreaker, retry)
 
 load_dotenv()
 
@@ -20,122 +23,261 @@ API_KEY = os.getenv("API_KEY", "forte-hack-2026")
 UPLOAD_DIR = Path("tmp_uploads"); UPLOAD_DIR.mkdir(exist_ok=True)
 EVIDENCE_DIR = Path("baseline/evidence"); EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = "jobs.db"
+MAX_QUEUE_DEPTH = 50
 
-# --- DB INIT (Replaces in-memory dict) ---
+# ==== BUSINESS METRICS ====
+JOBS_TOTAL = Counter("forte_jobs_total", "Total jobs", ["status"])
+VIOLATIONS_TOTAL = Counter("forte_violations_total", "Violations detected", ["violation_type"])
+INFERENCE_DURATION = Histogram("forte_inference_seconds", "Inference duration",
+                               buckets=[1, 2, 5, 10, 20, 30, 60])
+QUEUE_DEPTH = Gauge("forte_queue_depth", "Current processing queue depth")
+CIRCUIT_STATE = Gauge("forte_circuit_breaker_open", "1 = breaker open")
+
+
+# --- DB INIT (with idempotency + review columns) ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS jobs (
-            job_id TEXT PRIMARY KEY,
-            status TEXT,
-            video_name TEXT,
-            timestamp REAL,
-            result TEXT,
-            error TEXT
-        )
-    """)
+    conn.execute("""CREATE TABLE IF NOT EXISTS jobs (
+        job_id TEXT PRIMARY KEY, status TEXT, video_name TEXT, timestamp REAL,
+        result TEXT, error TEXT, idempotency_key TEXT UNIQUE,
+        review_status TEXT DEFAULT 'pending', reviewed_by TEXT,
+        review_notes TEXT, reviewed_at REAL)""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_ts ON jobs(timestamp DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_idem ON jobs(idempotency_key)")
     conn.commit(); conn.close()
 init_db()
 
-# --- OBSERVABILITY & RATE LIMITING ---
-limiter = Limiter(key_func=get_remote_address)
-app = FastAPI(title="ForteBank Vision API", version="3.0.0")
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# Prometheus Metrics (Exposes /metrics)
-Instrumentator().instrument(app).expose(app)
-
-app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_credentials=True,
-    allow_methods=["*"], allow_headers=["*"]
-)
-
+# --- ENGINE + CIRCUIT BREAKER ---
 print("Initializing engine...")
 engine = CashSecurityEngine(rules_csv="violation_rules_verified.csv")
+engine_breaker = CircuitBreaker("yolo-inference", failure_threshold=3, recovery_timeout=60.0)
 
-def run_engine_task(job_id: str, video_path: Path, original_name: str):
-    try:
-        result = engine.analyze_video(video_path, sample_fps=5, evidence_dir=str(EVIDENCE_DIR))
-        
-        playback_path = EVIDENCE_DIR / f"{job_id}_{original_name}"
-        if playback_path.exists(): playback_path.unlink()
-        shutil.copy(str(video_path), str(playback_path))
-        
-        for v in result.get("violations", []):
-            v["evidence_frames"] = [f"/evidence/{Path(p).name}" for p in v.get("evidence_frames", []) if p]
-            v["video_url"] = f"/evidence/{playback_path.name}"
-            
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("UPDATE jobs SET status=?, result=? WHERE job_id=?", 
-                     ("done", json.dumps(result), job_id))
-        conn.commit(); conn.close()
-    except Exception as e:
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("UPDATE jobs SET status=?, error=? WHERE job_id=?", 
-                     ("failed", str(e), job_id))
-        conn.commit(); conn.close()
-    finally:
-        if video_path.exists(): video_path.unlink()
+# --- OBSERVABILITY & RATE LIMITING ---
+limiter = Limiter(key_func=get_remote_address)
+app = FastAPI(title="ForteBank Vision API", version="3.1.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+Instrumentator().instrument(app).expose(app)
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_credentials=True,
+    allow_methods=["*"], allow_headers=["*"],
+)
+
+@app.middleware("http")
+async def correlation_middleware(request: Request, call_next):
+    tid = request.headers.get("X-Trace-Id") or new_trace_id()
+    response = await call_next(request)
+    response.headers["X-Trace-Id"] = tid
+    return response
+
+def err(status: int, code: str, msg: str):
+    return JSONResponse(status_code=status, content={"error": {
+        "code": code, "message": msg, "trace_id": current_trace_id()}})
 
 def verify_key(api_key: str = Depends(APIKeyHeader(name="X-API-Key"))):
-    if api_key != API_KEY: raise HTTPException(status_code=403, detail="Invalid X-API-Key")
+    if api_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid X-API-Key")
     return api_key
 
+
+# --- BACKGROUND WORKER ---
+def run_engine_task(job_id: str, video_path: Path, original_name: str):
+    new_trace_id()
+    try:
+        with timer(f"engine:{job_id}") as t:
+            result = engine_breaker.call(
+                engine.analyze_video, video_path,
+                sample_fps=5, evidence_dir=str(EVIDENCE_DIR))
+        INFERENCE_DURATION.observe(t.elapsed_ms / 1000)
+        slo.record(t.elapsed_ms, is_error=False)
+        CIRCUIT_STATE.set(0 if engine_breaker.state == "closed" else 1)
+
+        playback_path = EVIDENCE_DIR / f"{job_id}_{original_name}"
+        if playback_path.exists():
+            playback_path.unlink()
+        shutil.copy(str(video_path), str(playback_path))
+
+        for v in result.get("violations", []):
+            v["evidence_frames"] = [
+                f"/evidence/{Path(p).name}"
+                for p in v.get("evidence_frames", []) if p
+            ]
+            v["video_url"] = f"/evidence/{playback_path.name}"
+            VIOLATIONS_TOTAL.labels(violation_type=v["type"]).inc()
+
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("UPDATE jobs SET status=?, result=? WHERE job_id=?",
+                     ("done", json.dumps(result, ensure_ascii=False), job_id))
+        conn.commit(); conn.close()
+
+        JOBS_TOTAL.labels(status="done").inc()
+        audit("system", "job_completed", resource=job_id,
+              payload={"verdict": result["verdict"],
+                       "count": len(result["violations"])})
+    except Exception as e:
+        CIRCUIT_STATE.set(1 if engine_breaker.state == "open" else 0)
+        slo.record(0, is_error=True)
+        log.error("engine_failed", extra={"job_id": job_id, "error": str(e)})
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("UPDATE jobs SET status=?, error=? WHERE job_id=?",
+                     ("failed", str(e), job_id))
+        conn.commit(); conn.close()
+        JOBS_TOTAL.labels(status="failed").inc()
+        audit("system", "job_failed", resource=job_id, payload={"error": str(e)})
+    finally:
+        if video_path.exists():
+            video_path.unlink()
+
+
+# --- API ENDPOINTS ---
 @app.post("/api/v1/analyze")
-@limiter.limit("10/minute") # DDOS PROTECTION
-async def analyze(request: Request, background_tasks: BackgroundTasks, file: UploadFile = File(...), auth: str = Depends(verify_key)):
+@limiter.limit("10/minute")  # DDoS protection
+async def analyze(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    auth: str = Depends(verify_key),
+):
     if not file.filename.endswith(".mov"):
-        raise HTTPException(status_code=400, detail="Only .mov files are supported")
-    
+        return err(400, "INVALID_FILE_TYPE", "Only .mov files supported")
+
+    conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+    depth = conn.execute("SELECT COUNT(*) c FROM jobs WHERE status='processing'").fetchone()["c"]
+    QUEUE_DEPTH.set(depth)
+    if depth >= MAX_QUEUE_DEPTH:
+        conn.close()
+        audit("api", "load_shed", payload={"depth": depth}, ip=request.client.host)
+        return err(503, "QUEUE_OVERLOADED", f"Queue at {depth}/{MAX_QUEUE_DEPTH}")
+
+    if idempotency_key:
+        existing = conn.execute(
+            "SELECT * FROM jobs WHERE idempotency_key=?", (idempotency_key,)
+        ).fetchone()
+        if existing:
+            conn.close()
+            res = dict(existing)
+            if res["result"]:
+                res["result"] = json.loads(res["result"])
+            log.info("idempotent_replay", extra={"job_id": res["job_id"]})
+            return res
+    conn.close()
+
     job_id = str(uuid.uuid4())
     tmp_path = UPLOAD_DIR / f"{job_id}_{file.filename}"
     with open(tmp_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-        
+
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("INSERT INTO jobs VALUES (?, ?, ?, ?, ?, ?)", 
-                 (job_id, "processing", file.filename, time.time(), None, None))
+    conn.execute(
+        "INSERT INTO jobs (job_id, status, video_name, timestamp, idempotency_key) "
+        "VALUES (?,?,?,?,?)",
+        (job_id, "processing", file.filename, time.time(), idempotency_key),
+    )
     conn.commit(); conn.close()
-    
+
+    audit("api", "job_submitted", resource=job_id,
+          payload={"file": file.filename}, ip=request.client.host)
     background_tasks.add_task(run_engine_task, job_id, tmp_path, file.filename)
-    return {"job_id": job_id, "status": "processing"}
+    return {"job_id": job_id, "status": "processing", "trace_id": current_trace_id()}
+
 
 @app.get("/api/v1/jobs/{job_id}")
 async def get_job(job_id: str, auth: str = Depends(verify_key)):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
     row = conn.execute("SELECT * FROM jobs WHERE job_id=?", (job_id,)).fetchone()
     conn.close()
-    if not row: raise HTTPException(status_code=404, detail="Job not found")
-    
+    if not row:
+        return err(404, "JOB_NOT_FOUND", "Job not found")
     res = dict(row)
-    if res["result"]: res["result"] = json.loads(res["result"])
+    if res["result"]:
+        res["result"] = json.loads(res["result"])
     return res
+
 
 @app.get("/api/v1/history")
 async def get_history(auth: str = Depends(verify_key)):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
     rows = conn.execute("SELECT * FROM jobs ORDER BY timestamp DESC LIMIT 50").fetchall()
     conn.close()
     out = []
     for r in rows:
         d = dict(r)
-        if d["result"]: d["result"] = json.loads(d["result"])
+        if d["result"]:
+            d["result"] = json.loads(d["result"])
         out.append(d)
     return out
 
+
+@app.post("/api/v1/jobs/{job_id}/review")
+async def review_job(job_id: str, request: Request, auth: str = Depends(verify_key)):
+    body = await request.json()
+    decision = body.get("decision")
+    notes = body.get("notes", "")
+    if decision not in ("accept", "override"):
+        return err(400, "INVALID_DECISION", "decision must be 'accept' or 'override'")
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.execute(
+        "UPDATE jobs SET review_status=?, reviewed_by=?, review_notes=?, reviewed_at=? "
+        "WHERE job_id=?",
+        (decision, "compliance_officer", notes, time.time(), job_id),
+    )
+    if cur.rowcount == 0:
+        conn.close()
+        return err(404, "JOB_NOT_FOUND", "Job not found")
+    conn.commit(); conn.close()
+    audit("compliance_officer", f"review_{decision}", resource=job_id,
+          payload={"notes": notes}, ip=request.client.host)
+    return {"status": "ok", "job_id": job_id, "review_status": decision}
+
+
+# --- HEALTH & OBSERVABILITY ENDPOINTS ---
+@app.get("/health/live")
+async def health_live():
+    return {"status": "alive"}
+
+@app.get("/health/ready")
+async def health_ready():
+    try:
+        conn = sqlite3.connect(DB_PATH); conn.execute("SELECT 1"); conn.close()
+    except Exception:
+        return err(503, "DB_UNAVAILABLE", "Database not ready")
+    if engine_breaker.state == "open":
+        return err(503, "ENGINE_UNAVAILABLE", "Circuit breaker open")
+    return {"status": "ready", "device": engine.device}
+
+@app.get("/health/startup")
+async def health_startup():
+    return {"status": "started", "engine_loaded": engine is not None}
+
 @app.get("/api/v1/health")
-async def health():
+async def health_legacy():
     return {"status": "healthy", "device": engine.device}
+
+@app.get("/slo")
+async def get_slo(auth: str = Depends(verify_key)):
+    snap = slo.snapshot()
+    snap["circuit_breaker"] = engine_breaker.snapshot()
+    return snap
+
+@app.get("/audit")
+async def get_audit(limit: int = 100, auth: str = Depends(verify_key)):
+    conn = sqlite3.connect("audit.db"); conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        "SELECT * FROM audit_log ORDER BY id DESC LIMIT ?", (limit,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 @app.get("/evidence/{filename}")
 async def get_evidence(filename: str):
     p = EVIDENCE_DIR / filename
-    if not p.exists(): raise HTTPException(status_code=404, detail="Not found")
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="Not found")
     return FileResponse(p)
 
+
+# --- UI ---
 @app.get("/", response_class=HTMLResponse)
 async def ui():
     return """
@@ -196,7 +338,7 @@ async def ui():
                 <p class="text-xs text-forte-magenta font-medium tracking-wider">VISION AI</p>
             </div>
         </div>
-        
+
         <nav class="flex-1 py-6 px-4 space-y-2">
             <a href="#" onclick="switchView('dashboard', this)" class="sidebar-item active flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors">
                 <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
@@ -273,7 +415,7 @@ async def ui():
                             </div>
                             <div>
                                 <h3 class="text-lg font-semibold text-white">Upload New Footage</h3>
-                                <p class="text-sm text-slate-400 mt-1">Drag & drop .mov files here for instant compliance analysis</p>
+                                <p class="text-sm text-slate-400 mt-1">Drag &amp; drop .mov files here for instant compliance analysis</p>
                             </div>
                         </div>
                     </div>
@@ -326,7 +468,7 @@ async def ui():
             <div class="glass rounded-2xl p-8 border-l-4 border-l-forte-magenta">
                 <h2 class="text-2xl font-bold text-white mb-2">NBRK Resolution No. 231</h2>
                 <p class="text-slate-400 mb-6">Dated 29.11.2019. Registered with the Ministry of Justice of the Republic of Kazakhstan on 03.12.2019 No. 19680.</p>
-                
+
                 <div class="bg-slate-800/50 rounded-xl p-6 border border-slate-700 mb-6">
                     <div class="flex justify-between items-start mb-4">
                         <h3 class="text-lg font-bold text-forte-magenta">Article 22. Cash Operations Procedure</h3>
@@ -361,7 +503,7 @@ async def ui():
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="glass rounded-2xl p-6">
                     <h3 class="text-lg font-bold text-white mb-4">Forte Brand Architecture</h3>
                     <div class="space-y-3">
@@ -397,29 +539,36 @@ async def ui():
     <script>
         const API_KEY = "forte-hack-2026";
         lucide.createIcons();
-        
+
         function switchView(viewName, element) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             document.getElementById('view-' + viewName).classList.remove('hidden');
             document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
-            const titles = { dashboard: 'Operational Dashboard', investigations: 'Investigation Logs', regulatory: 'Regulatory Base', settings: 'System Settings' };
+            const titles = {
+                dashboard: 'Operational Dashboard',
+                investigations: 'Investigation Logs',
+                regulatory: 'Regulatory Base',
+                settings: 'System Settings'
+            };
             document.getElementById('pageTitle').innerText = titles[viewName];
-            if(viewName === 'investigations') renderInvestigationsTable();
+            if (viewName === 'investigations') renderInvestigationsTable();
         }
 
         updateHealth();
         fetchHistory();
         setInterval(updateHealth, 10000);
 
-        function showToast(msg, type="error") {
+        function showToast(msg, type = "error") {
             const toast = document.createElement('div');
-            const bg = type === "error" ? "bg-forte-magenta/10 border-forte-magenta/50 text-forte-magenta" : "bg-forte-green/10 border-forte-green/50 text-forte-green";
+            const bg = type === "error"
+                ? "bg-forte-magenta/10 border-forte-magenta/50 text-forte-magenta"
+                : "bg-forte-green/10 border-forte-green/50 text-forte-green";
             toast.className = `toast glass border ${bg} px-4 py-3 rounded-lg shadow-xl flex items-center gap-3`;
             toast.innerHTML = `<i data-lucide="${type === 'error' ? 'alert-circle' : 'check-circle'}" class="w-5 h-5"></i> <span class="text-sm font-medium">${msg}</span>`;
             document.getElementById('toastContainer').appendChild(toast);
             lucide.createIcons();
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(()=>toast.remove(), 300); }, 4000);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
         }
 
         let globalJobs = [];
@@ -431,21 +580,21 @@ async def ui():
                 document.getElementById('sysStatus').innerText = `System Online (${data.device.toUpperCase()})`;
                 document.getElementById('statDevice').innerText = data.device.toUpperCase();
                 document.getElementById('settingsDevice').value = data.device.toUpperCase();
-            } catch(e) {}
+            } catch (e) {}
         }
 
         async function fetchHistory() {
             try {
-                const res = await fetch('/api/v1/history', {headers: {"X-API-Key": API_KEY}});
+                const res = await fetch('/api/v1/history', { headers: { "X-API-Key": API_KEY } });
                 globalJobs = await res.json();
-                
+
                 const list = document.getElementById('historyList');
                 if (globalJobs.length === 0) return;
-                
+
                 list.innerHTML = "";
                 let violations = 0;
                 let cleared = 0;
-                
+
                 globalJobs.slice(0, 5).forEach(j => {
                     if (j.status === 'done') {
                         if (j.result.verdict === 'нарушение') violations++;
@@ -453,7 +602,7 @@ async def ui():
                     }
                     const icon = j.status === 'processing' ? 'loader-2' : (j.result?.verdict === 'нарушение' ? 'alert-triangle' : 'check-circle');
                     const color = j.status === 'processing' ? 'text-forte-blue animate-spin' : (j.result?.verdict === 'нарушение' ? 'text-forte-magenta' : 'text-forte-green');
-                    
+
                     list.innerHTML += `
                         <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 transition-colors">
                             <div class="flex items-center gap-3 overflow-hidden">
@@ -470,7 +619,7 @@ async def ui():
                 document.getElementById('statViolations').innerText = violations;
                 document.getElementById('statCleared').innerText = cleared;
                 lucide.createIcons();
-            } catch(e) {}
+            } catch (e) {}
         }
 
         function renderInvestigationsTable() {
@@ -508,11 +657,11 @@ async def ui():
             document.getElementById('resultSection').classList.add('hidden');
             document.getElementById('processingSection').classList.remove('hidden');
             document.getElementById('processingSection').classList.add('flex');
-            
+
             let progress = 0;
             const bar = document.getElementById('progressBar');
             const text = document.getElementById('progressText');
-            
+
             const phases = [
                 { p: 20, t: "Uploading video..." },
                 { p: 40, t: "Extracting frames via FFmpeg..." },
@@ -534,11 +683,13 @@ async def ui():
 
             try {
                 const res = await fetch("/api/v1/analyze", {
-                    method: "POST", headers: {"X-API-Key": API_KEY}, body: formData
+                    method: "POST",
+                    headers: { "X-API-Key": API_KEY },
+                    body: formData
                 });
                 const data = await res.json();
                 if (res.ok) pollStatus(data.job_id, phaseInt, bar, text);
-                else throw new Error(data.detail);
+                else throw new Error(data.detail || data.error?.message || "Unknown error");
             } catch (e) {
                 clearInterval(phaseInt);
                 showToast(e.message, 'error');
@@ -548,9 +699,9 @@ async def ui():
 
         async function pollStatus(jobId, phaseInt, bar, text) {
             const interval = setInterval(async () => {
-                const res = await fetch(`/api/v1/jobs/${jobId}`, {headers: {"X-API-Key": API_KEY}});
+                const res = await fetch(`/api/v1/jobs/${jobId}`, { headers: { "X-API-Key": API_KEY } });
                 const data = await res.json();
-                
+
                 if (data.status === "done") {
                     clearInterval(interval);
                     clearInterval(phaseInt);
@@ -581,13 +732,13 @@ async def ui():
             document.getElementById('processingSection').classList.remove('flex');
             document.getElementById('resultSection').classList.remove('hidden');
             document.getElementById('resultSection').classList.add('flex');
-            
+
             const isViolation = res.verdict === "нарушение";
             const borderCol = isViolation ? "border-forte-magenta" : "border-forte-green";
             const bgCol = isViolation ? "bg-forte-magenta/5" : "bg-forte-green/5";
             const iconBg = isViolation ? "bg-forte-magenta/20 text-forte-magenta" : "bg-forte-green/20 text-forte-green";
             const iconName = isViolation ? "alert-triangle" : "check-circle";
-            
+
             let html = `
                 <div class="glass rounded-2xl p-6 flex items-center justify-between shadow-lg border-l-4 ${borderCol} ${bgCol}">
                     <div class="flex items-center gap-4">
@@ -641,12 +792,13 @@ async def ui():
             html += `</div>`;
             document.getElementById('resultSection').innerHTML = html;
             lucide.createIcons();
-            fetchHistory(); 
+            fetchHistory();
         }
     </script>
 </body>
 </html>
 """
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
