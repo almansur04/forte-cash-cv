@@ -5,7 +5,7 @@ This document explains the engineering trade-offs behind the pipeline.
 ## 1. Why not Vision-Language Models (VLMs)?
 
 We tested Moondream2 (HF) and LLaVA to detect phone use.
-- **Hallucination:** on top-down angles, VLMs confused the bank's black IP desk phone for a personal mobile phone — ~50% false positive rate.
+- **Hallucination:** on top-down angles, VLMs confused the bank's black IP desk phone for a personal mobile phone - ~50% false positive rate.
 - **Latency:** one VLM query on M1 MPS took ~1.5s. Multiple queries per video breach the 5-minute budget.
 - **Memory:** loading Moondream2 costs ~3.2 GB.
 
@@ -37,8 +37,8 @@ We tested YOLOv8s-Pose for head/wrist tracking.
 The initial PyTorch pipeline (`yolov8n.pt`) worked but consumed **~600 MB RAM** and required torchvision + ultralytics (~250 MB) just to load. On CPU this made the app undeployable on 512 MB free tiers.
 
 **Migration:**
-1. Export YOLOv8n to ONNX (opset 12): `yolov8n.onnx` — 12 MB
-2. Quantize dynamic INT8: `yolov8n_int8.onnx` — 3.3 MB
+1. Export YOLOv8n to ONNX (opset 12): `yolov8n.onnx` - 12 MB
+2. Quantize dynamic INT8: `yolov8n_int8.onnx` - 3.3 MB
 3. Replace `ultralytics.YOLO.track()` with `onnxruntime.InferenceSession`
 4. Implement minimal NMS with `cv2.dnn.NMSBoxes` (no extra dependency)
 
@@ -48,7 +48,7 @@ The initial PyTorch pipeline (`yolov8n.pt`) worked but consumed **~600 MB RAM** 
 
 A naive loop calls `cap.read()` on every frame, discarding 29 of 30 for 2 FPS sampling. On CPU each decode is ~20 ms → **43 seconds wasted** on an 71-second video.
 
-**Fix:** use `cap.grab()` for intermediate frames (decoder advances, no YUV→BGR conversion, no numpy allocation), then `cap.read()` only for the sampled frame. 10–50× faster skip.
+**Fix:** use `cap.grab()` for intermediate frames (decoder advances, no YUV→BGR conversion, no numpy allocation), then `cap.read()` only for the sampled frame. 10-50× faster skip.
 
 Combined with early-stop (return at first violation), demo runtime drops:
 - Clean 72s video: 60s → **6s**

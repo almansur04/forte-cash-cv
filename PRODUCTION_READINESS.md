@@ -1,8 +1,8 @@
 # Production Readiness & Engineering Philosophy
 
-A production system is the whole engineered artifact that stands between a product and its users. It is not merely code that runs without errors on a developer’s machine, but an architecture that operates under real traffic, real failures, and real consequences. Structural decisions about how components are organized, how they communicate, and how they evolve must satisfy both functional requirements and non-functional demands such as response time, availability, security, and cost.
+A production system is the whole engineered artifact that stands between a product and its users. It is not merely code that runs without errors on a developer's machine, but an architecture that operates under real traffic, real failures, and real consequences. Structural decisions about how components are organized, how they communicate, and how they evolve must satisfy both functional requirements and non-functional demands such as response time, availability, security, and cost.
 
-At the scale of millions of users, every layer—architecture, frontend and UI, design, backend, machine learning, computer vision, legal and banking controls, reliability, performance, and optimization—must be treated as a first-class engineering product in its own right.
+At the scale of millions of users, every layer-architecture, frontend and UI, design, backend, machine learning, computer vision, legal and banking controls, reliability, performance, and optimization-must be treated as a first-class engineering product in its own right.
 
 Below is how **ForteBank Vision** maps to these production principles.
 
@@ -13,7 +13,7 @@ The frontend is not a cosmetic wrapper; it is a performance-critical, accessibil
 - **Usability:** Drag-and-drop uploads, auto-seeking HTML5 video players for evidence review, and a Single Page Application (SPA) router for seamless Dashboard/Investigations/Regulatory navigation.
 
 ## 2. Backend (The Operational Core)
-The backend is the system’s operational core. At millions of users, even a small inefficiency or unprotected endpoint becomes a systemic risk.
+The backend is the system's operational core. At millions of users, even a small inefficiency or unprotected endpoint becomes a systemic risk.
 - **Persistence & State:** Replaced in-memory prototypes with a persistent SQLite database (`jobs.db`), implementing idempotent API job tracking.
 - **Rate Limiting & Abuse Prevention:** Implemented SlowAPI to enforce 10 requests/minute per IP. This protects the ML inference queue from DDoS attacks, infinite frontend loops, and scrapers.
 - **Asynchronous Queues:** Heavy video processing is offloaded to `BackgroundTasks`, preventing server timeouts during high concurrency.

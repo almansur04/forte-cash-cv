@@ -1,4 +1,4 @@
-# Experiments — Development Audit Trail
+# Experiments - Development Audit Trail
 
 These scripts are preserved as a **historical record** of the iteration process during the 48h hackathon.
 
@@ -55,7 +55,7 @@ Measured result: **F1 = 61.22%** (15 TP, 12 FP, 7 FN). See [`../docs/final_bench
 | `check_device.py` | MPS/CUDA/CPU detection |
 | `generate_rules.py` | Regulatory CSV generator (superseded by `violation_rules_verified.csv`) |
 | `test_engine_v2.py` | Single-video smoke test |
-| `test_moondream.py` | VLM prototype (rejected — see ADR-001) |
+| `test_moondream.py` | VLM prototype (rejected - see ADR-001) |
 | `test_vlm.py` | VLM prototype (rejected) |
 | `test_single.py` | Legacy single-clip test |
 | `test_targets.py` | Detection target exploration |
