@@ -30,7 +30,7 @@ def ffprobe_info(video):
 
 class CashSecurityEngine:
     DESK_RECT = (0.15, 0.40, 0.85, 0.95)
-    STREAK_AWAY = 6  # 1.2s at 5 FPS
+    STREAK_AWAY = 3  # 1.2s at 5 FPS
     CONF_THRESH = 0.25
     NMS_THRESH = 0.45
     INPUT_SIZE = 416
