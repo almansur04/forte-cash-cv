@@ -3,3 +3,7 @@ __pycache__/
 *.csv
 !violation_rules.csv
 .DS_Store
+models/
+*.pt
+*.jpg
+*.safetensors
