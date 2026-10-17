@@ -256,8 +256,7 @@ Beyond what the hackathon required, we added:
 | Load shedding | Queue depth 50 ceiling | `api.py` analyze endpoint |
 | Rate limiting | SlowAPI 10/min per IP | `api.py` `@limiter.limit` |
 | Human-in-the-loop review | `POST /api/v1/jobs/{id}/review` | `api.py` |
-
-**None of these were required by the hackathon brief.** They were added because the prompt asked for a "production-style" build, and a principal engineer's output should hold up under production scrutiny.
+ 
 
 ---
 
