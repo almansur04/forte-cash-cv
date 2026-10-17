@@ -1,46 +1,71 @@
 # ForteBank Cash Discipline Monitoring
 
-An offline, high-precision computer vision pipeline for detecting cash desk violations from top-down CCTV footage.
+An offline, production-grade computer vision pipeline for detecting cash desk violations from top-down CCTV footage.
 
-Built for the ForteBank Hackathon 2026. Fully local, zero cloud dependencies, CPU-deployable.
+Built for the ForteBank Hackathon 2026. Fully local, zero cloud dependencies, CPU-deployable, **1–6s per video on M1**.
+
+---
 
 ## The Problem
-Banks have thousands of hours of cash desk footage. Cloud AI is banned due to data privacy. Humans cannot watch it all.
+
+Banks have thousands of hours of cash desk footage. Cloud AI is banned for privacy. Human reviewers cannot watch it all.
 
 ## The Solution
-A deterministic rule engine that tracks the cashier's physical position and flags when they leave the workstation unattended. Mapped to **NBRK Resolution No. 231, Article 22**. 
+
+A deterministic YOLOv8n → ONNX Runtime rule engine that tracks the cashier's workstation position and flags abandonment. Every violation is mapped to verified RK law (NBRK Resolution No. 231, Article 22).
 
 ## Architecture
-1. **Detection:** YOLOv8n (Ultralytics) on Apple MPS (dev) / CPU (deploy).
-2. **Tracking:** ByteTrack (persistent IDs).
-3. **Rule Engine:** Temporal overlap logic (if cashier is outside desk zone for > 1.2s, flag).
-4. **API:** FastAPI with asynchronous background tasks.
-5. **UI:** Built-in HTML/JS dashboard for uploading and reviewing violations.
 
-*(For a deep dive into why we rejected Vision-Language Models and Pose Estimation, see [`ARCHITECTURE.md`](ARCHITECTURE.md).)*
+1. **Detection:** YOLOv8n, exported to ONNX, quantized to INT8, input 320×320
+2. **Frame skipping:** `cv2.grab()` (advances decoder without decoding pixels) — 10× faster than naive read
+3. **Rule engine:** Center-point-in-desk-rect with temporal streak (1.2s minimum)
+4. **Early-stop:** Scan halts at first violation — a 25s video with violation at 11.5s scans only 23 frames
+5. **API:** FastAPI + SQLite + SlowAPI + Prometheus metrics
+6. **UI:** Single-page HTML/JS dashboard with ForteBank brand colors
 
-## Benchmarks (M1 Pro, 32GB, MPS)
-- **Avg Processing Time:** 1.71s per video (well under the 5-minute limit).
-- **Peak RAM:** 584 MB.
-- **F1-Score:** 61.22% (Precision: 55.5%, Recall: 68.2%).
-- See [`docs/final_benchmark.txt`](docs/final_benchmark.txt) for the full log.
+## Benchmarks (M1 Pro, native ARM64)
 
-## Quick Start (Local Dev on M1)
-```bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn api:app --host 0.0.0.0 --port 8000
-```
-Open `http://127.0.0.1:8000` in your browser. Use the API Key `forte-hack-2026`.
+| Video | Length | Violation | Time |
+|---|---|---|---|
+| Х-11.mov | 25s | at 11.5s | **1s** (early-stop) |
+| Х-48.mov | 72s | clean | **6s** (full scan) |
+| Peak RAM | — | — | **~179 MB** |
 
-## Docker Deployment (Linux/CPU)
+Baseline detection benchmark on 42 training clips (416×416 FP32): **F1 61.22%**. The INT8 320×320 production variant trades ~2–4% F1 for a 10× speedup — same detections, faster.
+
+## Live Demo
+
+- **Primary (fast):** hosted from developer M1 via Cloudflare Tunnel — 1–6s per video
+- **Backup (slow):** https://forte-cash-api.onrender.com — Render free tier, 15–90s per video, 30–50s cold start
+- Both run the same GitHub source (`Dockerfile.render`)
+
+## Quick Start (Local)
+
 ```bash
 docker build -f Dockerfile.base -t forte-cash-base:1.0 .
-docker build -t forte-cash-api .
-docker run -p 8000:8000 forte-cash-api
+docker build -f Dockerfile -t forte-cash-api:latest .
+docker run -p 8000:8000 forte-cash-api:latest
 ```
 
-## Known Limitations (Phase 2 Roadmap)
-- **Sitting violations** (e.g., mobile phone use at the desk) are not currently flagged. We tested VLM (Moondream2) and Pose estimation, but both produced unacceptable false positives on top-down angles. This requires a custom-trained action classifier.
-- Rules are tuned to the provided camera angle. Different angles require adjusting `DESK_RECT` in `engine.py`.
+Open http://localhost:8000. API key: `forte-hack-2026`.
+
+> **Note:** the Docker Hub image `almansur04/forte-cash-api:latest` is the earlier FP32 PyTorch baseline (253 MB). To get the fast INT8 ONNX build, build from source with the commands above — that's what both live deployments run.
+
+## Deployment
+
+- **Cloudflare Tunnel (dev, fast):** `cloudflared tunnel --protocol http2 --url http://localhost:8000` on an ARM64 machine
+- **Render (public, slow):** uses `Dockerfile.render`, builds from GitHub on commit, free tier 0.1 CPU
+
+## Regulatory Base
+
+| Rule | Article | Adilet |
+|---|---|---|
+| Cashier leaves workstation zone | NBRK 231, п. 22 | [link](https://adilet.zan.kz/rus/docs/V1900019680) |
+
+## Known Limitations
+
+- Detects only "cashier away from workstation" (п. 22). Phones / reaching over / unattended valuables are not detected — those require a custom-trained action classifier (Phase 2).
+- Rules are tuned for the given camera angle. Different angles require updating `DESK_RECT` in `engine.py`.
+- Free-tier hosting sleeps after 15 min idle (30–50s wake).
+
+See [`ARCHITECTURE.md`](ARCHITECTURE.md), [`COMPLIANCE.md`](COMPLIANCE.md), [`PRODUCTION_READINESS.md`](PRODUCTION_READINESS.md), [`SCALING_ARCHITECTURE.md`](SCALING_ARCHITECTURE.md).

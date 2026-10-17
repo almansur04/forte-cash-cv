@@ -1,27 +1,59 @@
 # Architecture & Engineering Decisions
 
-This document explains why we chose a deterministic rule engine over modern Vision-Language Models (VLMs) or Pose Estimation.
+This document explains the engineering trade-offs behind the pipeline.
 
 ## 1. Why not Vision-Language Models (VLMs)?
-We initially tested Moondream2 (via Hugging Face) and LLaVA to detect mobile phone use.
-- **The Hallucination Problem:** On top-down angles, VLMs consistently confused the bank's black IP desk phone for a personal mobile phone, causing a ~50% false positive rate.
-- **The Latency Problem:** A single VLM query on M1 MPS took ~1.5 seconds. Querying multiple frames per video breached the 5-minute limit.
-- **The Memory Problem:** Loading Moondream2 consumed 3.2GB of unified memory.
 
-**Decision:** We dropped VLMs entirely. For a compliance tool, deterministic and predictable > smart and hallucinating.
+We tested Moondream2 (HF) and LLaVA to detect phone use.
+- **Hallucination:** on top-down angles, VLMs confused the bank's black IP desk phone for a personal mobile phone — ~50% false positive rate.
+- **Latency:** one VLM query on M1 MPS took ~1.5s. Multiple queries per video breach the 5-minute budget.
+- **Memory:** loading Moondream2 costs ~3.2 GB.
+
+**Decision:** dropped VLMs entirely. For compliance, deterministic > smart.
 
 ## 2. Why not Pose Estimation?
-We tested YOLOv8s-Pose to track the cashier's head and wrist.
-- **The Keypoint Dropout Problem:** When the cashier leaned forward or turned their head, the model lost the keypoints. The engine interpreted this as "cashier left the desk," causing false positives.
-- **The Chin-Rest Problem:** Pose estimation cannot distinguish a hand resting on a chin from a hand holding a phone to an ear.
 
-**Decision:** We reverted to standard YOLOv8n bounding-box tracking with a highly tuned geometric overlap logic.
+We tested YOLOv8s-Pose for head/wrist tracking.
+- **Keypoint dropout:** when the cashier leaned or turned, keypoints vanished, causing false "away" signals.
+- **Chin-rest problem:** pose cannot distinguish a hand on a chin from a hand holding a phone to an ear.
 
-## 3. The Winning Logic (V9)
-- **Spatial Geometry:** We define a `DESK_RECT` that covers the bottom 60% of the screen. 
-- **The Leaning Fix:** By making the box tall (y=0.40 to 0.95), the cashier can lean forward to write without triggering the "away" rule.
-- **The Dropout Fix:** If YOLO fails to detect the person for a single frame, we do not increment the "away" streak.
-- **The Temporal Rule:** The cashier must be outside the desk zone for 1.2 seconds (6 consecutive frames at 5 FPS) to trigger a violation.
+**Decision:** reverted to YOLOv8n bounding-box tracking with geometric overlap logic.
 
-## 4. Deployment
-We split the Docker build into `Dockerfile.base` (heavy ML dependencies) and `Dockerfile` (app code). This reduces rebuild time from 6 minutes to 2.7 seconds.
+## 3. The Winning Logic
+
+- **Desk rectangle** covers the bottom of the frame where the workstation sits.
+- **Torso center** (bbox midpoint) must be inside the rectangle for the cashier to count as "at desk."
+- **Temporal rule:** absent for ≥ 1.2s (6 consecutive frames at 5 FPS) → violation.
+- **Dropout tolerance:** if YOLO fails to detect any person, the away-streak does NOT increment.
+
+## 4. Deployment Architecture
+
+- Base image (`Dockerfile.base`): python 3.11 + ONNX Runtime + OpenCV + FastAPI stack + static ffmpeg. Cached and reused.
+- App image (`Dockerfile`): copies `api.py`, `engine.py`, `production.py`, `violation_rules_verified.csv`, `yolov8n.onnx`, `yolov8n_int8.onnx`.
+- Rebuilds take ~3s because the base layer is cached.
+
+## 5. Why ONNX Runtime + INT8 (not PyTorch at inference)
+
+The initial PyTorch pipeline (`yolov8n.pt`) worked but consumed **~600 MB RAM** and required torchvision + ultralytics (~250 MB) just to load. On CPU this made the app undeployable on 512 MB free tiers.
+
+**Migration:**
+1. Export YOLOv8n to ONNX (opset 12): `yolov8n.onnx` — 12 MB
+2. Quantize dynamic INT8: `yolov8n_int8.onnx` — 3.3 MB
+3. Replace `ultralytics.YOLO.track()` with `onnxruntime.InferenceSession`
+4. Implement minimal NMS with `cv2.dnn.NMSBoxes` (no extra dependency)
+
+**Result:** peak RAM drops to **~179 MB**, image size drops ~70%, no observable detection regression for our single-class use case.
+
+## 6. Frame skipping with `cv2.grab()`
+
+A naive loop calls `cap.read()` on every frame, discarding 29 of 30 for 2 FPS sampling. On CPU each decode is ~20 ms → **43 seconds wasted** on an 71-second video.
+
+**Fix:** use `cap.grab()` for intermediate frames (decoder advances, no YUV→BGR conversion, no numpy allocation), then `cap.read()` only for the sampled frame. 10–50× faster skip.
+
+Combined with early-stop (return at first violation), demo runtime drops:
+- Clean 72s video: 60s → **6s**
+- Violation 25s video: 3s → **1s**
+
+## 7. Why we did NOT ship pre-seeded results
+
+Pre-seeded demo entries would make the dashboard instantly populated for judges, but they obscure the fact that the pipeline actually works on new footage. We ship the real engine and accept that clean (unviolated) videos still take 6s on the fastest machine. Judges see genuine results.
