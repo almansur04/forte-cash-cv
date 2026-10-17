@@ -20,20 +20,20 @@ class CashSecurityEngine:
         self.violation_streaks = {
             "unauthorized_person": {"count": 0, "first_seen_sec": 0, "reported": False},
             "unattended_open_safe": {"count": 0, "first_seen_sec": 0, "reported": False},
-            "unattended_workstation": {"count": 0, "first_seen_sec": 0, "reported": False} # NEW RULE
+            "unattended_workstation": {"count": 0, "first_seen_sec": 0, "reported": False},
+            "exposed_cash": {"count": 0, "first_seen_sec": 0, "reported": False} 
         }
-        self.STREAK_THRESHOLD = 3 
+        self.STREAK_THRESHOLD = 5 
 
     def analyze_frame(self, frame_rgb, current_sec):
         results = self.yolo.predict(frame_rgb, classes=[0], device=self.device, verbose=False)
         people_count = len(results[0].boxes)
-
         pil_img = Image.fromarray(frame_rgb)
         
-        # --- Rule 1: Unauthorized Person (2+ people) ---
+        # --- Rule 1: Unauthorized Person ---
         if people_count >= 2:
             enc_img = self.vlm.encode_image(pil_img)
-            prompt = "Are there two people standing inside the same room? (Ignore anyone standing behind a glass wall). Answer strictly yes or no."
+            prompt = "Are both people standing on the exact same side of the glass partition? Answer strictly yes or no."
             ans = self.vlm.answer_question(enc_img, prompt, self.tokenizer).strip().lower()
             if "yes" in ans:
                 if self.violation_streaks["unauthorized_person"]["count"] == 0:
@@ -46,7 +46,7 @@ class CashSecurityEngine:
             self.violation_streaks["unauthorized_person"]["count"] = 0
             self.violation_streaks["unauthorized_person"]["reported"] = False
 
-        # --- Rule 2: Unattended Open Safe (0 people) ---
+        # --- Rule 2: Unattended Open Safe ---
         if people_count == 0:
             enc_img = self.vlm.encode_image(pil_img)
             ans = self.vlm.answer_question(enc_img, "Is the grey safe box door visibly open? Answer strictly yes or no.", self.tokenizer).strip().lower()
@@ -61,15 +61,23 @@ class CashSecurityEngine:
             self.violation_streaks["unattended_open_safe"]["count"] = 0
             self.violation_streaks["unattended_open_safe"]["reported"] = False
 
-        # --- Rule 3: Unattended Active Workstation (1 person, walking away) ---
+        # --- Rule 3 & 4: Unattended Workstation / Exposed Cash ---
         if people_count == 1:
             enc_img = self.vlm.encode_image(pil_img)
-            # First, check if they left the chair
-            ans_sitting = self.vlm.answer_question(enc_img, "Is the person sitting down at the wooden desk? Answer strictly yes or no.", self.tokenizer).strip().lower()
+            ans_sitting = self.vlm.answer_question(enc_img, "Is the person sitting down in the chair at the desk? Answer strictly yes or no.", self.tokenizer).strip().lower()
             
             if "no" in ans_sitting:
-                # If they are not at the desk, check if the PC is left on
-                ans_pc = self.vlm.answer_question(enc_img, "Is the laptop computer screen open and brightly lit? Answer strictly yes or no.", self.tokenizer).strip().lower()
+                # RULE 4: Exposed Cash/Bag (Adapting to VLM's visual dialect)
+                ans_bag = self.vlm.answer_question(enc_img, "Is there a green bag, pouch, or multiple laptops lying on the wooden desk? Answer strictly yes or no.", self.tokenizer).strip().lower()
+                if "yes" in ans_bag:
+                    if self.violation_streaks["exposed_cash"]["count"] == 0:
+                        self.violation_streaks["exposed_cash"]["first_seen_sec"] = current_sec
+                    self.violation_streaks["exposed_cash"]["count"] += 1
+                else:
+                    self.violation_streaks["exposed_cash"]["count"] = 0
+
+                # RULE 3: Active PC
+                ans_pc = self.vlm.answer_question(enc_img, "Is there an open laptop computer on the desk? Answer strictly yes or no.", self.tokenizer).strip().lower()
                 if "yes" in ans_pc:
                     if self.violation_streaks["unattended_workstation"]["count"] == 0:
                         self.violation_streaks["unattended_workstation"]["first_seen_sec"] = current_sec
@@ -79,9 +87,13 @@ class CashSecurityEngine:
             else:
                 self.violation_streaks["unattended_workstation"]["count"] = 0
                 self.violation_streaks["unattended_workstation"]["reported"] = False
+                self.violation_streaks["exposed_cash"]["count"] = 0
+                self.violation_streaks["exposed_cash"]["reported"] = False
         else:
             self.violation_streaks["unattended_workstation"]["count"] = 0
             self.violation_streaks["unattended_workstation"]["reported"] = False
+            self.violation_streaks["exposed_cash"]["count"] = 0
+            self.violation_streaks["exposed_cash"]["reported"] = False
 
         # --- Evaluate Streaks ---
         final_violations = []
