@@ -5,20 +5,16 @@ import torch
 from pathlib import Path
 from engine import CashSecurityEngine
 
-# Target the true False Positives
-TARGET_NUMBERS = ["3", "5", "19"]
+TARGET_NUMBERS = ["24", "28", "40"]
 VIDEOS_DIR = Path("/Users/almansurkakimov/Downloads/open/videos")
 
 def run_targets():
-    print(f"🚀 False Positive Test: Checking videos {TARGET_NUMBERS} (Require NO violations)...")
+    print(f"🚀 Verifying fixes on False Negatives {TARGET_NUMBERS} (Require Violations)...")
     engine = CashSecurityEngine()
     
     for target in TARGET_NUMBERS:
-        # Fixed matcher: looks exactly for -3.mov or -5.mov, ignoring 43 or 15.
         matched_files = [f for f in VIDEOS_DIR.glob("*.mov") if f.name.endswith(f"-{target}.mov")]
-        if not matched_files:
-            print(f"Skipping {target}: File not found.")
-            continue
+        if not matched_files: continue
             
         video_file = matched_files[0]
         print(f"\n🎥 Analyzing {video_file.name}...")
@@ -50,21 +46,21 @@ def run_targets():
                     for v in frame_violations:
                         print(f"   ⚠️ [Sec {v['timecode_sec']}] Flagged: {v['type']}")
                     video_violations.extend(frame_violations)
+                    # Early stop
+                    break
                     
                 seconds_processed += 1
             frame_idx += 1
             
         cap.release()
-        
         gc.collect()
-        if torch.backends.mps.is_available():
-            torch.mps.empty_cache()
+        if torch.backends.mps.is_available(): torch.mps.empty_cache()
             
         duration = time.time() - start_time
-        if not video_violations:
-            print(f"   ✅ SUCCESS: No violations found! (Filtered False Positive in {duration:.1f}s)")
+        if video_violations:
+            print(f"   ✅ SUCCESS: Violation caught! (Processed in {duration:.1f}s)")
         else:
-            print(f"   ❌ FAILED: Still hallucinated a violation. (Processed in {duration:.1f}s)")
+            print(f"   ❌ FAILED: Engine missed the violation. (Processed in {duration:.1f}s)")
 
 if __name__ == "__main__":
     run_targets()
