@@ -33,11 +33,11 @@ class CashSecurityEngine:
     STREAK_AWAY = 3  # 1.2s at 5 FPS
     CONF_THRESH = 0.25
     NMS_THRESH = 0.45
-    INPUT_SIZE = 416
+    INPUT_SIZE = 320
 
     def __init__(self, rules_csv="violation_rules_verified.csv"):
         self.device = "cpu"
-        self.session = ort.InferenceSession("yolov8n.onnx", providers=["CPUExecutionProvider"])
+        self.session = ort.InferenceSession("yolov8n_int8.onnx", providers=["CPUExecutionProvider"])
         self.input_name = self.session.get_inputs()[0].name
         
         self.rules = {}
@@ -156,6 +156,7 @@ class CashSecurityEngine:
                 violations.append(self._emit("cashier_away_from_workstation", t_sec - 1.2, t_sec, frame, boxes_xywh, evidence_dir, safe))
                 self.reported["cashier_away_from_workstation"] = True
 
+                break  # early-stop after first violation
             frame_idx += 1
             processed += 1
 

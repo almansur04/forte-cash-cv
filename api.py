@@ -690,17 +690,14 @@ async def ui():
                 const bar = document.getElementById('progressBar');
                 const text = document.getElementById('progressText');
                 bar.style.width = '0%';
-                const phases = [
-                    { p: 20, t: 'Uploading video...' },
-                    { p: 40, t: 'Extracting frames via FFmpeg...' },
-                    { p: 70, t: 'Running ONNX inference...' },
-                    { p: 90, t: 'Applying NBRK compliance rules...' },
-                    { p: 100, t: 'Generating evidence package...' }
-                ];
-                let i = 0;
+                const startTs = Date.now();
+                let fakeP = 10;
                 const phaseInt = setInterval(function() {
-                    if (i < phases.length) { bar.style.width = phases[i].p + '%'; text.innerText = phases[i].t; i++; }
-                }, 1500);
+                    const el = ((Date.now() - startTs) / 1000).toFixed(1);
+                    fakeP = Math.min(85, fakeP + 3);
+                    bar.style.width = fakeP + '%';
+                    text.innerText = 'Analyzing... ' + el + 's elapsed (ONNX INT8 CPU)';
+                }, 1000);
 
                 const fd = new FormData();
                 fd.append('file', file);
