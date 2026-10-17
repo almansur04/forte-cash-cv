@@ -455,6 +455,7 @@ async def ui():
                                 <th class="px-6 py-3">Date/Time</th>
                                 <th class="px-6 py-3">Verdict</th>
                                 <th class="px-6 py-3">Violations</th>
+                                <th class="px-6 py-3">Report</th>
                             </tr>
                         </thead>
                         <tbody id="investigationsTableBody"></tbody>
@@ -479,6 +480,28 @@ async def ui():
                     <a href="https://adilet.zan.kz/rus/docs/V1900019680" target="_blank" class="text-forte-blue hover:underline text-sm flex items-center gap-1">
                         View full document on Adilet.zan.kz <i data-lucide="external-link" class="w-4 h-4"></i>
                     </a>
+                </div>
+            </div>
+
+            <div class="glass rounded-2xl p-6 border-t-2 border-t-forte-blue">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="list-checks" class="w-5 h-5 text-forte-blue"></i>
+                    Article 22 Incidents Log
+                </h3>
+                <p class="text-sm text-slate-400 mb-4" id="regulatorySummary">Loading...</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs uppercase bg-slate-800/50 border-b border-slate-700">
+                            <tr>
+                                <th class="px-4 py-2 text-slate-400">Date/Time</th>
+                                <th class="px-4 py-2 text-slate-400">Video</th>
+                                <th class="px-4 py-2 text-slate-400">Timestamp</th>
+                                <th class="px-4 py-2 text-slate-400">Duration</th>
+                                <th class="px-4 py-2 text-slate-400">Report</th>
+                            </tr>
+                        </thead>
+                        <tbody id="regulatoryBody"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -532,6 +555,11 @@ async def ui():
             </div>
         </div>
 
+        <!-- ================= VIEW: REPORT DETAIL ================= -->
+        <div id="view-report" class="view-section hidden p-8 max-w-7xl mx-auto w-full space-y-6 fade-in">
+            <div id="reportContent" class="flex flex-col gap-6"></div>
+        </div>
+
     </main>
 
     <div id="toastContainer" class="fixed bottom-6 right-6 flex flex-col gap-3 z-50"></div>
@@ -549,10 +577,12 @@ async def ui():
                 dashboard: 'Operational Dashboard',
                 investigations: 'Investigation Logs',
                 regulatory: 'Regulatory Base',
-                settings: 'System Settings'
+                settings: 'System Settings', report: 'Investigation Report'
             };
             document.getElementById('pageTitle').innerText = titles[viewName];
             if (viewName === 'investigations') renderInvestigationsTable();
+            if (viewName === 'regulatory') renderComplianceLog();
+            if (viewName === 'settings') updateHealth();
         }
 
         updateHealth();
@@ -603,8 +633,11 @@ async def ui():
                     const icon = j.status === 'processing' ? 'loader-2' : (j.result?.verdict === 'нарушение' ? 'alert-triangle' : 'check-circle');
                     const color = j.status === 'processing' ? 'text-forte-blue animate-spin' : (j.result?.verdict === 'нарушение' ? 'text-forte-magenta' : 'text-forte-green');
 
+                    const clickableAttrs = j.status === 'done'
+                        ? `onclick="openReport('${j.job_id}')" class="w-full text-left flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-forte-magenta/50 transition-colors cursor-pointer"`
+                        : `class="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50"`;
                     list.innerHTML += `
-                        <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 transition-colors">
+                        <button ${clickableAttrs}>
                             <div class="flex items-center gap-3 overflow-hidden">
                                 <i data-lucide="${icon}" class="w-4 h-4 ${color} shrink-0"></i>
                                 <div class="truncate">
@@ -612,7 +645,8 @@ async def ui():
                                     <p class="text-[10px] text-slate-500">${new Date(j.timestamp*1000).toLocaleTimeString()}</p>
                                 </div>
                             </div>
-                        </div>
+                            ${j.status === 'done' ? '<i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 shrink-0"></i>' : ''}
+                        </button>
                     `;
                 });
                 document.getElementById('statTotal').innerText = globalJobs.length;
@@ -634,6 +668,9 @@ async def ui():
                         <td class="px-6 py-4">${new Date(j.timestamp*1000).toLocaleString()}</td>
                         <td class="px-6 py-4">${verdict}</td>
                         <td class="px-6 py-4">${count}</td>
+                        <td class="px-6 py-4">
+                            ${j.status === 'done' ? `<button onclick="openReport('${j.job_id}')" class="px-3 py-1 bg-forte-magenta/20 text-forte-magenta rounded hover:bg-forte-magenta/30 text-xs font-bold cursor-pointer">View</button>` : '<span class="text-slate-600 text-xs">—</span>'}
+                        </td>
                     </tr>
                 `;
             });
@@ -802,6 +839,89 @@ async def ui():
             lucide.createIcons();
             fetchHistory();
         }
+
+        // ===== REPORT DETAIL + COMPLIANCE LOG =====
+        function buildResultHTML(res) {
+            const isViolation = res.verdict === "нарушение";
+            const borderCol = isViolation ? "border-forte-magenta" : "border-forte-green";
+            const bgCol = isViolation ? "bg-forte-magenta/5" : "bg-forte-green/5";
+            const iconBg = isViolation ? "bg-forte-magenta/20 text-forte-magenta" : "bg-forte-green/20 text-forte-green";
+            const iconName = isViolation ? "alert-triangle" : "check-circle";
+            let html = '<div class="glass rounded-2xl p-6 flex items-center justify-between shadow-lg border-l-4 ' + borderCol + ' ' + bgCol + '">'
+                + '<div class="flex items-center gap-4">'
+                + '<div class="p-3 rounded-full ' + iconBg + '"><i data-lucide="' + iconName + '" class="w-8 h-8"></i></div>'
+                + '<div><h2 class="text-2xl font-bold ' + (isViolation ? 'text-forte-magenta' : 'text-forte-green') + '">'
+                + (isViolation ? 'Violation Detected' : 'No Violations') + '</h2>'
+                + '<p class="text-slate-400 text-sm mt-1">' + res.video + '</p></div></div></div>'
+                + '<div class="flex flex-col gap-6">';
+            (res.violations || []).forEach(function(v) {
+                html += '<div class="glass rounded-2xl p-6 flex flex-col md:flex-row gap-6 border border-slate-700/50">'
+                    + '<div class="w-full md:w-1/2 flex flex-col gap-4">'
+                    + '<div><span class="px-2 py-1 bg-slate-800 text-[10px] uppercase font-bold tracking-wider rounded text-slate-400 border border-slate-700">' + v.type + '</span>'
+                    + '<h3 class="text-lg font-semibold text-white mt-3">' + v.description + '</h3></div>'
+                    + '<div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">'
+                    + '<p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-bold">Regulatory Citation</p>'
+                    + '<a href="' + v.adilet_url + '" target="_blank" class="text-sm text-forte-blue hover:underline flex items-center gap-1 font-medium">'
+                    + 'NBRK Resolution No. 231, ' + v.article_number + ' <i data-lucide="external-link" class="w-3 h-3"></i></a></div>'
+                    + '<div class="grid grid-cols-2 gap-4">'
+                    + '<div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700"><p class="text-[10px] text-slate-500 uppercase font-bold">Start Time</p>'
+                    + '<p class="text-white font-mono text-lg">' + v.timecode_sec + 's</p></div>'
+                    + '<div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700"><p class="text-[10px] text-slate-500 uppercase font-bold">End Time</p>'
+                    + '<p class="text-white font-mono text-lg">' + v.timecode_end_sec + 's</p></div></div></div>'
+                    + '<div class="w-full md:w-1/2 flex flex-col gap-4">'
+                    + '<div class="rounded-xl overflow-hidden border border-slate-700 bg-black aspect-video relative">'
+                    + '<video controls class="w-full h-full object-contain" src="' + v.video_url + '#t=' + v.timecode_sec + ',' + v.timecode_end_sec + '"></video></div>'
+                    + (v.evidence_frames || []).map(function(img) { return '<img src="' + img + '" class="w-full rounded-xl border border-slate-700 shadow-lg">'; }).join('')
+                    + '</div></div>';
+            });
+            html += '</div>';
+            return html;
+        }
+
+        async function openReport(jobId) {
+            document.querySelectorAll('.view-section').forEach(function(el) { el.classList.add('hidden'); });
+            document.getElementById('view-report').classList.remove('hidden');
+            document.getElementById('pageTitle').innerText = 'Investigation Report';
+            document.querySelectorAll('.sidebar-item').forEach(function(el) { el.classList.remove('active'); });
+            const container = document.getElementById('reportContent');
+            container.innerHTML = '<div class="glass rounded-2xl p-8 text-center text-slate-400">Loading report...</div>';
+            try {
+                const res = await fetch('/api/v1/jobs/' + jobId, {headers: {"X-API-Key": API_KEY}});
+                const job = await res.json();
+                if (job.status !== 'done' || !job.result) {
+                    container.innerHTML = '<div class="glass rounded-2xl p-6 text-slate-400">Job status: ' + job.status + '. No report available yet.</div>';
+                    return;
+                }
+                container.innerHTML = '<a onclick="switchView(\'dashboard\', document.querySelector(\'[onclick*=dashboard]\'))" class="self-start flex items-center gap-2 text-slate-400 hover:text-white mb-2 cursor-pointer"><i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Dashboard</a>' + buildResultHTML(job.result);
+                lucide.createIcons();
+            } catch(e) {
+                container.innerHTML = '<div class="glass rounded-2xl p-6 text-red-400">Failed to load report: ' + e.message + '</div>';
+            }
+        }
+
+        function renderComplianceLog() {
+            const jobsWithV = globalJobs.filter(function(j) { return j.status === 'done' && j.result && j.result.verdict === 'нарушение'; });
+            const totalViolations = jobsWithV.reduce(function(sum, j) { return sum + ((j.result.violations || []).length); }, 0);
+            document.getElementById('regulatorySummary').innerHTML = '<span class="text-forte-magenta font-bold">' + totalViolations + '</span> confirmed Article 22 violation(s) across <span class="text-white font-bold">' + jobsWithV.length + '</span> investigation(s).';
+            const tbody = document.getElementById('regulatoryBody');
+            tbody.innerHTML = '';
+            if (jobsWithV.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-500 italic">No violations recorded yet.</td></tr>';
+                return;
+            }
+            jobsWithV.forEach(function(j) {
+                (j.result.violations || []).forEach(function(v) {
+                    tbody.innerHTML += '<tr class="border-b border-slate-700/50 hover:bg-slate-800/30">'
+                        + '<td class="px-4 py-3 text-slate-400 text-xs">' + new Date(j.timestamp*1000).toLocaleString() + '</td>'
+                        + '<td class="px-4 py-3 text-slate-200">' + j.video_name + '</td>'
+                        + '<td class="px-4 py-3 font-mono text-forte-magenta">' + v.timecode_sec + 's-' + v.timecode_end_sec + 's</td>'
+                        + '<td class="px-4 py-3 text-slate-300">' + (v.timecode_end_sec - v.timecode_sec).toFixed(1) + 's</td>'
+                        + '<td class="px-4 py-3"><button onclick="openReport(\'' + j.job_id + '\')" class="px-3 py-1 bg-forte-magenta/20 text-forte-magenta rounded hover:bg-forte-magenta/30 text-xs font-bold cursor-pointer">View</button></td>'
+                        + '</tr>';
+                });
+            });
+        }
+
     </script>
 </body>
 </html>
