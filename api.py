@@ -587,7 +587,7 @@ async def ui():
 
         updateHealth();
         fetchHistory();
-        setInterval(updateHealth, 10000);
+        setInterval(updateHealth, 5000);
 
         function showToast(msg, type = "error") {
             const toast = document.createElement('div');
@@ -604,13 +604,22 @@ async def ui():
         let globalJobs = [];
 
         async function updateHealth() {
+            const statusEl = document.getElementById('sysStatus');
             try {
-                const res = await fetch('/api/v1/health');
+                const controller = new AbortController();
+                const tid = setTimeout(() => controller.abort(), 20000);
+                const res = await fetch('/api/v1/health', { signal: controller.signal, cache: 'no-store' });
+                clearTimeout(tid);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
-                document.getElementById('sysStatus').innerText = `System Online (${data.device.toUpperCase()})`;
+                if (!data.device) throw new Error('no device field in response');
+                statusEl.innerText = `System Online (${data.device.toUpperCase()})`;
                 document.getElementById('statDevice').innerText = data.device.toUpperCase();
                 document.getElementById('settingsDevice').value = data.device.toUpperCase();
-            } catch (e) {}
+            } catch (e) {
+                statusEl.innerText = 'Waking up server...';
+                console.warn('[health]', e.name === 'AbortError' ? 'timeout' : (e.message || e));
+            }
         }
 
         async function fetchHistory() {
