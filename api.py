@@ -790,6 +790,14 @@ async def ui():
             });
 
             html += `</div>`;
+            html += `
+                <div class="flex justify-center mt-6">
+                    <button onclick="resetUI()" class="px-6 py-3 bg-forte-magenta hover:bg-forte-magenta/90 text-white font-semibold rounded-lg shadow-lg transition-all flex items-center gap-2 cursor-pointer">
+                        <i data-lucide="upload" class="w-5 h-5"></i>
+                        Analyze Another Video
+                    </button>
+                </div>
+            `;
             document.getElementById('resultSection').innerHTML = html;
             lucide.createIcons();
             fetchHistory();
