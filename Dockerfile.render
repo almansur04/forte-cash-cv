@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # App code
-COPY api.py engine.py production.py violation_rules_verified.csv yolov8n.onnx ./
+COPY api.py engine.py production.py violation_rules_verified.csv yolov8n.onnx yolov8n_int8.onnx ./
 
 # Writeable dirs
 RUN mkdir -p baseline/evidence tmp_uploads

@@ -3,7 +3,7 @@ ARG BASE_IMAGE=forte-cash-base:1.0
 FROM ${BASE_IMAGE}
 
 WORKDIR /app
-COPY api.py engine.py production.py violation_rules_verified.csv yolov8n.onnx ./
+COPY api.py engine.py production.py violation_rules_verified.csv yolov8n.onnx yolov8n_int8.onnx ./
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \

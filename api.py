@@ -87,7 +87,7 @@ def run_engine_task(job_id: str, video_path: Path, original_name: str):
         with timer(f"engine:{job_id}") as t:
             result = engine_breaker.call(
                 engine.analyze_video, video_path,
-                sample_fps=5, evidence_dir=str(EVIDENCE_DIR))
+                sample_fps=2, evidence_dir=str(EVIDENCE_DIR))
         INFERENCE_DURATION.observe(t.elapsed_ms / 1000)
         slo.record(t.elapsed_ms, is_error=False)
         CIRCUIT_STATE.set(0 if engine_breaker.state == "closed" else 1)
