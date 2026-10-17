@@ -1,11 +1,11 @@
-"""ForteBank Cash Discipline Engine (V9 - FINAL) - The Winning Baseline."""
-import cv2, json, os, re, subprocess, numpy as np
+"""ForteBank Cash Discipline Engine (ONNX Optimized)."""
+import cv2, json, os, re, subprocess, numpy as np, csv
 from pathlib import Path
-from ultralytics import YOLO
-import torch
+import onnxruntime as ort
 from collections import defaultdict
 
-DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
+# ONNX Runtime is CPU-native
+DEVICE = "cpu"
 
 def safe_name(p):
     return re.sub(r'[^A-Za-z0-9_-]', '_', Path(p).stem.replace('Х', 'X').replace('х', 'x'))
@@ -29,20 +29,84 @@ def ffprobe_info(video):
         return 30.0, 60.0
 
 class CashSecurityEngine:
-    # EXACT V9 geometry - tuned on all 42 clips
     DESK_RECT = (0.15, 0.40, 0.85, 0.95)
     STREAK_AWAY = 6  # 1.2s at 5 FPS
+    CONF_THRESH = 0.25
+    NMS_THRESH = 0.45
+    INPUT_SIZE = 416
 
     def __init__(self, rules_csv="violation_rules_verified.csv"):
-        self.device = DEVICE
-        self.yolo = YOLO("yolov8n.pt").to(self.device)
-        import pandas as pd
-        self.rules = pd.read_csv(rules_csv).set_index("violation_type").to_dict("index")
+        self.session = ort.InferenceSession("yolov8n.onnx", providers=["CPUExecutionProvider"])
+        self.input_name = self.session.get_inputs()[0].name
+        
+        self.rules = {}
+        with open(rules_csv, newline='', encoding='utf-8') as f:
+            for row in csv.DictReader(f):
+                self.rules[row["violation_type"]] = row
         self.reset_for_video()
 
     def reset_for_video(self):
         self.streaks = defaultdict(int)
         self.reported = defaultdict(bool)
+
+    def _letterbox(self, img):
+        shape = img.shape[:2]
+        r = min(self.INPUT_SIZE / shape[0], self.INPUT_SIZE / shape[1])
+        new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
+        dw, dh = self.INPUT_SIZE - new_unpad[0], self.INPUT_SIZE - new_unpad[1]
+        dw /= 2; dh /= 2
+        
+        if shape[::-1] != new_unpad:
+            img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
+        top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
+        left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+        img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(114, 114, 114))
+        return img, r, (dw, dh)
+
+    def _infer(self, frame):
+        # Preprocess
+        img, ratio, (dw, dh) = self._letterbox(frame)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = img.transpose(2, 0, 1) # HWC to CHW
+        img = np.expand_dims(img, axis=0).astype(np.float32) / 255.0
+        
+        # Inference
+        outputs = self.session.run(None, {self.input_name: img})
+        preds = np.squeeze(outputs[0]).T # (8400, 84)
+        
+        # Filter class 0 (person)
+        scores = preds[:, 4] 
+        boxes = preds[:, :4]
+        
+        mask = scores > self.CONF_THRESH
+        boxes = boxes[mask]
+        scores = scores[mask]
+        
+        if len(boxes) == 0:
+            return np.empty((0, 4))
+            
+        # Convert cx,cy,w,h to x,y,w,h for NMS
+        boxes_xywh = np.zeros_like(boxes)
+        boxes_xywh[:, 0] = boxes[:, 0] - boxes[:, 2] / 2
+        boxes_xywh[:, 1] = boxes[:, 1] - boxes[:, 3] / 2
+        boxes_xywh[:, 2] = boxes[:, 2]
+        boxes_xywh[:, 3] = boxes[:, 3]
+        
+        indices = cv2.dnn.NMSBoxes(boxes_xywh.tolist(), scores.tolist(), self.CONF_THRESH, self.NMS_THRESH)
+        if len(indices) == 0:
+            return np.empty((0, 4))
+            
+        indices = indices.flatten()
+        final_boxes = boxes_xywh[indices]
+        
+        # Scale back to original frame size
+        h, w = frame.shape[:2]
+        final_boxes[:, 0] = (final_boxes[:, 0] - dw) / ratio
+        final_boxes[:, 1] = (final_boxes[:, 1] - dh) / ratio
+        final_boxes[:, 2] = final_boxes[:, 2] / ratio
+        final_boxes[:, 3] = final_boxes[:, 3] / ratio
+        
+        return final_boxes # Returns (N, 4) as x,y,w,h
 
     def analyze_video(self, video_path, sample_fps=5, evidence_dir=None):
         self.reset_for_video()
@@ -68,15 +132,17 @@ class CashSecurityEngine:
                 frame_idx += 1; continue
             t_sec = frame_idx / fps
 
-            results = self.yolo.track(frame, persist=True, classes=[0], device=self.device, verbose=False)
-            boxes = results[0].boxes.xyxy.cpu().numpy() if len(results[0].boxes) else np.empty((0,4))
-
+            boxes_xywh = self._infer(frame)
+            
             n_at_desk = 0
-            for b in boxes:
-                cx = (b[0] + b[2]) / 2.0
-                cy = (b[1] + b[3]) / 2.0
+            for b in boxes_xywh:
+                x, y, w, h = b
+                cx = x + w / 2
+                cy = y + h / 2
+                
                 x1 = self.DESK_RECT[0] * W; y1 = self.DESK_RECT[1] * H
                 x2 = self.DESK_RECT[2] * W; y2 = self.DESK_RECT[3] * H
+                
                 if (x1 <= cx <= x2) and (y1 <= cy <= y2):
                     n_at_desk += 1
 
@@ -86,7 +152,7 @@ class CashSecurityEngine:
                 self.streaks["A"] = 0
 
             if self.streaks["A"] == self.STREAK_AWAY and not self.reported["cashier_away_from_workstation"]:
-                violations.append(self._emit("cashier_away_from_workstation", t_sec - 1.2, t_sec, frame, evidence_dir, safe))
+                violations.append(self._emit("cashier_away_from_workstation", t_sec - 1.2, t_sec, frame, boxes_xywh, evidence_dir, safe))
                 self.reported["cashier_away_from_workstation"] = True
 
             frame_idx += 1
@@ -102,30 +168,28 @@ class CashSecurityEngine:
             "violations": sorted(violations, key=lambda v: v["timecode_sec"]),
         }
 
-    def _emit(self, vtype, t_sec, t_end, frame, evidence_dir, safe):
+    def _emit(self, vtype, t_sec, t_end, frame, boxes_xywh, evidence_dir, safe):
         rule = self.rules.get(vtype, {})
         desc = f"Cashier absent from workstation zone for {t_end - t_sec:.1f}s."
         ev_path = None
         if evidence_dir:
             Path(evidence_dir).mkdir(parents=True, exist_ok=True)
-            # Draw desk rect (green) + detected persons (red if away, blue if at desk)
             vis = frame.copy()
             H, W = vis.shape[:2]
             dx1 = int(self.DESK_RECT[0] * W); dy1 = int(self.DESK_RECT[1] * H)
             dx2 = int(self.DESK_RECT[2] * W); dy2 = int(self.DESK_RECT[3] * H)
             cv2.rectangle(vis, (dx1, dy1), (dx2, dy2), (0, 200, 0), 3)
-            cv2.putText(vis, "DESK ZONE", (dx1 + 6, dy1 + 22),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 0), 2)
-            # Draw last-known person boxes in red
-            results = self.yolo.predict(frame, classes=[0], device=self.device, verbose=False)
-            for bbox in (results[0].boxes.xyxy.cpu().numpy() if len(results[0].boxes) else []):
-                bx1, by1, bx2, by2 = map(int, bbox[:4])
-                cv2.rectangle(vis, (bx1, by1), (bx2, by2), (0, 0, 220), 3)
-            # Timestamp banner
-            cv2.putText(vis, f"t={t_end:.1f}s  |  {vtype}", (12, H - 16),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2)
+            cv2.putText(vis, "DESK ZONE", (dx1 + 6, dy1 + 22), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 0), 2)
+            
+            for b in boxes_xywh:
+                x, y, w, h = map(int, b)
+                cv2.rectangle(vis, (x, y), (x+w, y+h), (0, 0, 220), 3)
+                
+            cv2.putText(vis, f"t={t_end:.1f}s  |  {vtype}", (12, H - 16), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2)
+            
             ev_path = f"{evidence_dir}/{safe}_{vtype}_{int(t_sec)}s.jpg"
             cv2.imwrite(ev_path, vis)
+            
         return {
             "type": vtype,
             "timecode_sec": round(max(0.0, t_sec), 1),
