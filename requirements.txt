@@ -1,14 +1,10 @@
-# --- Runtime ---
 fastapi==0.143.3
 uvicorn==0.54.0
 python-multipart==0.0.20
 pydantic==2.10.4
-pandas==3.0.6
-opencv-python-headless==5.0.0.93
-ultralytics==8.4.178
-lap>=0.5.13
+opencv-python-headless==4.10.0.84
+onnxruntime==1.31.0
+numpy==2.4.6
 slowapi>=0.1.9
 prometheus-fastapi-instrumentator>=7.0.0
 python-dotenv>=1.0.0
-# --- CI / dev (installed in Actions only) ---
-# ruff, pytest, pytest-cov
