@@ -36,6 +36,7 @@ class CashSecurityEngine:
     INPUT_SIZE = 416
 
     def __init__(self, rules_csv="violation_rules_verified.csv"):
+        self.device = "cpu"
         self.session = ort.InferenceSession("yolov8n.onnx", providers=["CPUExecutionProvider"])
         self.input_name = self.session.get_inputs()[0].name
         
