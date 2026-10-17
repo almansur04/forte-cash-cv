@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1.4
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+# Static ffmpeg — no apt-get
+COPY --from=mwader/static-ffmpeg:6.1.1 /ffmpeg /usr/local/bin/ffmpeg
+COPY --from=mwader/static-ffmpeg:6.1.1 /ffprobe /usr/local/bin/ffprobe
+RUN chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
+
+# Python deps (native x86_64 wheels on Render — no QEMU, ~60s)
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# App code
+COPY api.py engine.py production.py violation_rules_verified.csv yolov8n.onnx ./
+
+# Writeable dirs
+RUN mkdir -p baseline/evidence tmp_uploads
+
+ENV DEVICE=cpu
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=3)" || exit 1
+
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
