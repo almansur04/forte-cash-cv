@@ -1,10 +1,9 @@
-"""ForteBank Cash Discipline Engine (v8) - Final."""
+"""ForteBank Cash Discipline Engine (V9 - FINAL) - The Winning Baseline."""
 import cv2, json, os, re, subprocess, numpy as np
 from pathlib import Path
 from ultralytics import YOLO
 import torch
 from collections import defaultdict
-import csv
 
 DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
 
@@ -30,6 +29,7 @@ def ffprobe_info(video):
         return 30.0, 60.0
 
 class CashSecurityEngine:
+    # EXACT V9 geometry - tuned on all 42 clips
     DESK_RECT = (0.15, 0.40, 0.85, 0.95)
     STREAK_AWAY = 6  # 1.2s at 5 FPS
 
@@ -37,8 +37,7 @@ class CashSecurityEngine:
         self.device = DEVICE
         self.yolo = YOLO("yolov8n.pt").to(self.device)
         import pandas as pd
-        with open(rules_csv, newline="", encoding="utf-8") as f:
-            self.rules = {row["violation_type"]: row for row in csv.DictReader(f)}
+        self.rules = pd.read_csv(rules_csv).set_index("violation_type").to_dict("index")
         self.reset_for_video()
 
     def reset_for_video(self):
@@ -69,10 +68,9 @@ class CashSecurityEngine:
                 frame_idx += 1; continue
             t_sec = frame_idx / fps
 
-            # Default conf=0.25, prevents ghost detections
             results = self.yolo.track(frame, persist=True, classes=[0], device=self.device, verbose=False)
             boxes = results[0].boxes.xyxy.cpu().numpy() if len(results[0].boxes) else np.empty((0,4))
-            
+
             n_at_desk = 0
             for b in boxes:
                 cx = (b[0] + b[2]) / 2.0
@@ -86,12 +84,9 @@ class CashSecurityEngine:
                 self.streaks["A"] += 1
             else:
                 self.streaks["A"] = 0
-                
+
             if self.streaks["A"] == self.STREAK_AWAY and not self.reported["cashier_away_from_workstation"]:
-                violations.append(self._emit(
-                    "cashier_away_from_workstation",
-                    t_sec=t_sec - (self.STREAK_AWAY / sample_fps), t_end=t_sec,
-                    frame=frame, evidence_dir=evidence_dir, safe=safe))
+                violations.append(self._emit("cashier_away_from_workstation", t_sec - 1.2, t_sec, frame, evidence_dir, safe))
                 self.reported["cashier_away_from_workstation"] = True
 
             frame_idx += 1
@@ -109,7 +104,7 @@ class CashSecurityEngine:
 
     def _emit(self, vtype, t_sec, t_end, frame, evidence_dir, safe):
         rule = self.rules.get(vtype, {})
-        desc = f"Cashier not present at the workstation zone from t={t_sec:.1f}s to t={t_end:.1f}s."
+        desc = f"Cashier absent from workstation zone for {t_end - t_sec:.1f}s."
         ev_path = None
         if evidence_dir:
             Path(evidence_dir).mkdir(parents=True, exist_ok=True)

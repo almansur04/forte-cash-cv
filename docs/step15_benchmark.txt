@@ -1,0 +1,304 @@
+Loading labels...
+Initializing engine (YOLOv8n on MPS)...
+Loading Moondream2 for verification...
+Found 42 videos. Starting full benchmark...
+
+[1/42] X-1.mov      | True: нарушение       | Pred: без нарушения   | Time:  1.96s | Mem: 429.0MB | ❌
+[2/42] X-2.mov      | True: нарушение       | Pred: без нарушения   | Time:  1.14s | Mem: 548.8MB | ❌
+[3/42] Х-10.mov     | True: без нарушения   | Pred: без нарушения   | Time:  1.03s | Mem: 549.1MB | ✅
+[4/42] Х-11.mov     | True: нарушение       | Pred: нарушение       | Time:  1.55s | Mem: 549.5MB | ✅
+[5/42] Х-12.mov     | True: без нарушения   | Pred: нарушение       | Time:  2.47s | Mem: 549.9MB | ❌
+[6/42] Х-13.mov     | True: нарушение       | Pred: нарушение       | Time:  3.75s | Mem: 550.4MB | ✅
+[7/42] Х-14.mov     | True: без нарушения   | Pred: без нарушения   | Time:  7.97s | Mem: 551.6MB | ✅
+[8/42] Х-15.mov     | True: нарушение       | Pred: нарушение       | Time:  1.34s | Mem: 551.9MB | ✅
+  [VLM] Verifying phone trigger at 12.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 21.5s...
+  [VLM] Answer: no
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[9/42] Х-16.mov     | True: без нарушения   | Pred: без нарушения   | Time:  4.16s | Mem: 561.3MB | ✅
+  [VLM] Verifying phone trigger at 12.0s...
+  [VLM] Answer: no
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[10/42] Х-17.mov     | True: нарушение       | Pred: без нарушения   | Time:  2.26s | Mem: 561.9MB | ❌
+[11/42] Х-18.mov     | True: нарушение       | Pred: без нарушения   | Time:  1.49s | Mem: 562.1MB | ❌
+  [VLM] Verifying phone trigger at 26.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 31.5s...
+  [VLM] Answer: no
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[12/42] Х-19.mov     | True: без нарушения   | Pred: без нарушения   | Time:  5.92s | Mem: 564.7MB | ✅
+[13/42] Х-20.mov     | True: нарушение       | Pred: нарушение       | Time:  0.83s | Mem: 568.2MB | ✅
+[14/42] Х-21.mov     | True: без нарушения   | Pred: нарушение       | Time:  1.22s | Mem: 568.4MB | ❌
+[15/42] Х-22.mov     | True: нарушение       | Pred: нарушение       | Time:  1.30s | Mem: 568.5MB | ✅
+[16/42] Х-23.mov     | True: без нарушения   | Pred: нарушение       | Time:  1.16s | Mem: 568.6MB | ❌
+[17/42] Х-24.mov     | True: нарушение       | Pred: нарушение       | Time:  0.97s | Mem: 568.8MB | ✅
+[18/42] Х-25.mov     | True: без нарушения   | Pred: нарушение       | Time:  1.90s | Mem: 569.0MB | ❌
+[19/42] Х-26.mov     | True: нарушение       | Pred: нарушение       | Time:  1.24s | Mem: 569.1MB | ✅
+[20/42] Х-27.mov     | True: без нарушения   | Pred: нарушение       | Time:  1.59s | Mem: 569.3MB | ❌
+[21/42] Х-28.mov     | True: нарушение       | Pred: нарушение       | Time:  1.06s | Mem: 569.4MB | ✅
+[22/42] Х-29.mov     | True: без нарушения   | Pred: нарушение       | Time:  1.12s | Mem: 569.5MB | ❌
+  [VLM] Verifying phone trigger at 12.0s...
+  [VLM] Answer: no
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[23/42] Х-3.mov      | True: без нарушения   | Pred: без нарушения   | Time:  2.57s | Mem: 570.0MB | ✅
+[24/42] Х-30.mov     | True: нарушение       | Pred: нарушение       | Time:  1.26s | Mem: 570.1MB | ✅
+[25/42] Х-31.mov     | True: без нарушения   | Pred: нарушение       | Time:  1.47s | Mem: 570.3MB | ❌
+[26/42] Х-32.mov     | True: нарушение       | Pred: нарушение       | Time:  1.34s | Mem: 570.4MB | ✅
+[27/42] Х-33.mov     | True: нарушение       | Pred: нарушение       | Time:  0.94s | Mem: 570.5MB | ✅
+  [VLM] Verifying phone trigger at 12.0s...
+  [VLM] Answer: yes
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[28/42] Х-34.mov     | True: нарушение       | Pred: нарушение       | Time:  2.45s | Mem: 574.0MB | ✅
+  [VLM] Verifying phone trigger at 12.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 17.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 22.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 27.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 32.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 37.0s...
+  [VLM] Answer: no
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[29/42] Х-35.mov     | True: без нарушения   | Pred: без нарушения   | Time: 10.64s | Mem: 575.0MB | ✅
+  [VLM] Verifying phone trigger at 12.5s...
+  [VLM] Answer: no
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[30/42] Х-37.mov     | True: без нарушения   | Pred: без нарушения   | Time:  2.40s | Mem: 578.5MB | ✅
+  [VLM] Verifying phone trigger at 12.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 17.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 22.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 27.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 32.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 37.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 48.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 53.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 58.0s...
+  [VLM] Answer: no
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[31/42] Х-38.mov     | True: нарушение       | Pred: без нарушения   | Time: 14.32s | Mem: 579.3MB | ❌
+  [VLM] Verifying phone trigger at 4.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 9.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 14.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 19.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 24.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 42.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 47.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 52.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 57.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 62.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 77.0s...
+  [VLM] Answer: no
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[32/42] Х-39.mov     | True: без нарушения   | Pred: без нарушения   | Time: 17.84s | Mem: 580.3MB | ✅
+  [VLM] Verifying phone trigger at 37.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 65.0s...
+  [VLM] Answer: no
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[33/42] Х-4.mov      | True: нарушение       | Pred: без нарушения   | Time:  6.78s | Mem: 581.1MB | ❌
+[34/42] Х-40.mov     | True: нарушение       | Pred: нарушение       | Time:  1.59s | Mem: 581.2MB | ✅
+[35/42] Х-43.mov     | True: без нарушения   | Pred: без нарушения   | Time:  1.45s | Mem: 581.4MB | ✅
+[36/42] Х-44.mov     | True: нарушение       | Pred: без нарушения   | Time:  1.29s | Mem: 581.6MB | ❌
+[37/42] Х-45.mov     | True: без нарушения   | Pred: без нарушения   | Time:  2.00s | Mem: 581.9MB | ✅
+[38/42] Х-46.mov     | True: нарушение       | Pred: без нарушения   | Time:  1.23s | Mem: 582.0MB | ❌
+  [VLM] Verifying phone trigger at 37.0s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 65.0s...
+  [VLM] Answer: no
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[39/42] Х-47.mov     | True: нарушение       | Pred: без нарушения   | Time:  6.77s | Mem: 582.7MB | ❌
+  [VLM] Verifying phone trigger at 14.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 38.0s...
+  [VLM] Answer: no
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[40/42] Х-48.mov     | True: без нарушения   | Pred: без нарушения   | Time:  6.87s | Mem: 583.3MB | ✅
+  [VLM] Verifying phone trigger at 14.5s...
+  [VLM] Answer: no
+  [VLM] Verifying phone trigger at 38.0s...
+  [VLM] Answer: no
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+[41/42] Х-5.mov      | True: без нарушения   | Pred: без нарушения   | Time:  6.77s | Mem: 584.0MB | ✅
+[42/42] Х-8.mov      | True: без нарушения   | Pred: без нарушения   | Time:  2.26s | Mem: 584.8MB | ✅
+
+==================================================
+🎯 FINAL BENCHMARK RESULTS (M1 MPS, 2 FPS)
+==================================================
+Videos Processed: 42
+Total Time:       143.79s
+Avg Time/Video:   3.33s  (Max: 17.84s)
+Peak RAM:         584.8 MB
+--------------------------------------------------
+Accuracy:         61.90%  (26/42)
+Precision:        65.00%  (13 TP / 20 total positives)
+Recall:           59.09%  (13 TP / 22 actual violations)
+F1-Score:         61.90%
+--------------------------------------------------
+False Positives (FP): 7
+False Negatives (FN): 9  <-- MUST BE MINIMIZED
+==================================================
+
+False Positive Videos (flagged but clean):
+   video  time_sec               violation_types
+Х-12.mov      2.47 cashier_away_from_workstation
+Х-21.mov      1.22 cashier_away_from_workstation
+Х-23.mov      1.16 cashier_away_from_workstation
+Х-25.mov      1.90 cashier_away_from_workstation
+Х-27.mov      1.59 cashier_away_from_workstation
+Х-29.mov      1.12 cashier_away_from_workstation
+Х-31.mov      1.47 cashier_away_from_workstation
+
+False Negative Videos (missed violations):
+   video  time_sec
+ X-1.mov      1.96
+ X-2.mov      1.14
+Х-17.mov      2.26
+Х-18.mov      1.49
+Х-38.mov     14.32
+ Х-4.mov      6.78
+Х-44.mov      1.29
+Х-46.mov      1.23
+Х-47.mov      6.77
+
+Detailed CSV saved to: baseline/benchmark_full_results.csv
