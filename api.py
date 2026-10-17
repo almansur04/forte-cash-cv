@@ -566,7 +566,7 @@ async def ui():
 
     <script>
         const API_KEY = "forte-hack-2026";
-        lucide.createIcons();
+        try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch(e){}
 
         function switchView(viewName, element) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
@@ -585,10 +585,6 @@ async def ui():
             if (viewName === 'settings') updateHealth();
         }
 
-        updateHealth();
-        fetchHistory();
-        setInterval(updateHealth, 5000);
-
         function showToast(msg, type = "error") {
             const toast = document.createElement('div');
             const bg = type === "error"
@@ -597,7 +593,7 @@ async def ui():
             toast.className = `toast glass border ${bg} px-4 py-3 rounded-lg shadow-xl flex items-center gap-3`;
             toast.innerHTML = `<i data-lucide="${type === 'error' ? 'alert-circle' : 'check-circle'}" class="w-5 h-5"></i> <span class="text-sm font-medium">${msg}</span>`;
             document.getElementById('toastContainer').appendChild(toast);
-            lucide.createIcons();
+            try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch(e){}
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
         }
 
@@ -605,6 +601,7 @@ async def ui():
 
         async function updateHealth() {
             const statusEl = document.getElementById('sysStatus');
+            console.log('[health] fetching...');
             try {
                 const controller = new AbortController();
                 const tid = setTimeout(() => controller.abort(), 20000);
@@ -661,7 +658,7 @@ async def ui():
                 document.getElementById('statTotal').innerText = globalJobs.length;
                 document.getElementById('statViolations').innerText = violations;
                 document.getElementById('statCleared').innerText = cleared;
-                lucide.createIcons();
+                try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch(e){}
             } catch (e) {}
         }
 
@@ -845,7 +842,7 @@ async def ui():
                 </div>
             `;
             document.getElementById('resultSection').innerHTML = html;
-            lucide.createIcons();
+            try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch(e){}
             fetchHistory();
         }
 
@@ -902,7 +899,7 @@ async def ui():
                     return;
                 }
                 container.innerHTML = '<a onclick="switchView(\'dashboard\', document.querySelector(\'[onclick*=dashboard]\'))" class="self-start flex items-center gap-2 text-slate-400 hover:text-white mb-2 cursor-pointer"><i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Dashboard</a>' + buildResultHTML(job.result);
-                lucide.createIcons();
+                try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch(e){}
             } catch(e) {
                 container.innerHTML = '<div class="glass rounded-2xl p-6 text-red-400">Failed to load report: ' + e.message + '</div>';
             }
