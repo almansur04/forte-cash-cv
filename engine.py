@@ -108,12 +108,29 @@ class CashSecurityEngine:
         ev_path = None
         if evidence_dir:
             Path(evidence_dir).mkdir(parents=True, exist_ok=True)
+            # Draw desk rect (green) + detected persons (red if away, blue if at desk)
+            vis = frame.copy()
+            H, W = vis.shape[:2]
+            dx1 = int(self.DESK_RECT[0] * W); dy1 = int(self.DESK_RECT[1] * H)
+            dx2 = int(self.DESK_RECT[2] * W); dy2 = int(self.DESK_RECT[3] * H)
+            cv2.rectangle(vis, (dx1, dy1), (dx2, dy2), (0, 200, 0), 3)
+            cv2.putText(vis, "DESK ZONE", (dx1 + 6, dy1 + 22),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 0), 2)
+            # Draw last-known person boxes in red
+            results = self.yolo.predict(frame, classes=[0], device=self.device, verbose=False)
+            for bbox in (results[0].boxes.xyxy.cpu().numpy() if len(results[0].boxes) else []):
+                bx1, by1, bx2, by2 = map(int, bbox[:4])
+                cv2.rectangle(vis, (bx1, by1), (bx2, by2), (0, 0, 220), 3)
+            # Timestamp banner
+            cv2.putText(vis, f"t={t_end:.1f}s  |  {vtype}", (12, H - 16),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2)
             ev_path = f"{evidence_dir}/{safe}_{vtype}_{int(t_sec)}s.jpg"
-            cv2.imwrite(ev_path, frame)
+            cv2.imwrite(ev_path, vis)
         return {
             "type": vtype,
             "timecode_sec": round(max(0.0, t_sec), 1),
             "timecode_end_sec": round(t_end, 1),
+            "duration_sec": round(t_end - t_sec, 2),
             "description": desc,
             "evidence_frames": [ev_path] if ev_path else [],
             "article_number": rule.get("article_number", ""),
