@@ -1,9 +1,18 @@
-venv/
+# Python
 __pycache__/
-*.csv
-!violation_rules.csv
+*.py[cod]
+venv/
+.env
+
+# OS
 .DS_Store
-models/
-*.pt
-*.jpg
-*.safetensors
+
+# App Runtime
+api.log
+api.pid
+tmp_uploads/
+baseline/evidence/
+
+# Large Models (if not using Git LFS)
+# yolov8n.pt   # Un-comment this if you don't want the 6MB weight in the repo
+# *.gguf
