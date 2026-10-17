@@ -3,24 +3,35 @@ __pycache__/
 *.py[cod]
 venv/
 .env
+.env.local
+*.egg-info/
 
-# OS
-.DS_Store
-
-# App Runtime
+# Runtime state — DB artifacts regenerate on every run
+*.db
+*.db-journal
+*.db-wal
+audit.db
+jobs.db
+tmp_uploads/
 api.log
 api.pid
-tmp_uploads/
-baseline/
-models/
-experiments/__pycache__/
 
-# Ignore experimental data
+# Evidence (regenerated at runtime, don't commit)
+baseline/evidence/
+baseline/fn_frames/
+baseline/diag_*.csv
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Data files (except the verified rules)
 *.csv
-*.jpg
 !violation_rules_verified.csv
+*.jpg
 !docs/*.jpg
 
-# Weights (tracked via LFS or downloaded on build, but keep yolov8n.pt here for hackathon)
-# *.pt
+# Model weights (kept in git for hackathon reproducibility)
+# yolov8n.pt
 # *.gguf
